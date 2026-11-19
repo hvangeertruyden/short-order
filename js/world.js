@@ -4,12 +4,14 @@
 // ---------------------------------------------------------------------------
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { PALETTE as C, L, TABLES, TUNING } from './data.js';
 import { seatOf, receiptById } from './sim.js';
 import { zoneOf } from './actions.js';
 import { jellyPerson, updateJelly } from './jelly.js';
 import { curStep } from './kitchen.js';
 import * as Mo from './models.js';
+import { buildDecor, upgradeSurfaces, Life } from './decor.js';
 const { M, paint, rbox, cyl, sph, grp, canvasTex, emissive } = Mo;
 
 const ia = (obj, key) => { obj.userData.ia = key; return obj; };
@@ -42,6 +44,9 @@ export class World {
     this.buildKitchen();
     this.buildPass();
     this.buildDining();
+    this.decor = buildDecor(this);
+    upgradeSurfaces(this);
+    this.life = new Life(scene);
     this.static.traverse((o) => { if (o.userData.ia) this.iaObjs.set(o.userData.ia, o); if (o.isMesh) { o.receiveShadow = true; } });
     this.static.updateMatrixWorld(true);
     this.staticLabels = [];
@@ -50,21 +55,40 @@ export class World {
   }
 
   buildLights() {
-    this.hemi = new THREE.HemisphereLight(0xFFF4E2, 0x8A7A68, 0.9);
+    RectAreaLightUniformsLib.init();
+    this.indoor = [];                       // lights that die in a power cut: [light, base intensity]
+    const indoor = (light, base) => { light.intensity = base; this.indoor.push([light, base]); this.scene.add(light); if (light.target) this.scene.add(light.target); return light; };
+    this.hemi = new THREE.HemisphereLight(0xFFE9CC, 0x6B5444, 0.32);
     this.scene.add(this.hemi);
-    this.sun = new THREE.DirectionalLight(0xFFF2DD, 1.6);
-    this.sun.position.set(5, 11, 4);
-    this.sun.target.position.set(0, 0, 1);
+    // daylight pouring in through the front windows (the walls block it everywhere else)
+    this.sun = new THREE.DirectionalLight(0xFFE2B8, 2.6);
+    this.sun.position.set(-4, 7.5, 24);
+    this.sun.target.position.set(-1, 0, 4);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(2048, 2048);
-    Object.assign(this.sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 1, far: 30 });
-    this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.03;
+    Object.assign(this.sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 50 });
+    this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.035;
     this.scene.add(this.sun, this.sun.target);
-    this.kLight = new THREE.PointLight(0xFFF0D8, 6, 9, 1.6); this.kLight.position.set(-2.6, 2.7, -4.5); this.scene.add(this.kLight);
-    this.dLight = new THREE.PointLight(0xFFE8CC, 5, 10, 1.6); this.dLight.position.set(0, 2.7, 3.5); this.scene.add(this.dLight);
+    // soft cool fill from each window
+    for (const x of L.windows) { const r = new THREE.RectAreaLight(0xCFE6FF, 2.2, 2.0, 1.4); r.position.set(x, 1.6, 8.84); r.lookAt(x, 1.6, 0); this.scene.add(r); }
+    // warm pools under every pendant lamp
+    for (const t of TABLES) { const sp = new THREE.SpotLight(0xFFCF8F, 0, 4.6, 0.95, 0.75, 1.3); sp.position.set(t.x, L.ceiling - 1.36, t.z); sp.target.position.set(t.x, 0.7, t.z); indoor(sp, 4.5); }
+    // the order counter and the host stand
+    for (const [x, z] of [[-5.9, 0.6], [-5.9, 3.8], [-6.5, 7.8]]) { const sp = new THREE.SpotLight(0xFFE0B0, 0, 4.2, 0.8, 0.7, 1.3); sp.position.set(x + 0.6, 2.9, z); sp.target.position.set(x, 0.9, z); indoor(sp, 12); }
+    // general room light, lower than before so the pools read
+    this.dLight = indoor(new THREE.PointLight(0xFFE3C2, 0, 12, 1.6), 3.2); this.dLight.position.set(0, 2.4, 4.0);
+    // neon glows
+    this.neonGlow = indoor(new THREE.PointLight(0xFF3A6E, 0, 5, 1.6), 4.5); this.neonGlow.position.set(-5.1, 2.5, 8.4);
+    this.eatGlow = indoor(new THREE.PointLight(0xFF4A4A, 0, 4.5, 1.6), 4); this.eatGlow.position.set(7.5, 2.3, 1.4);
+    this.jukeGlowL = indoor(new THREE.PointLight(0xFFB040, 0, 3.2, 1.6), 3); this.jukeGlowL.position.set(6.9, 1.2, L.jukebox.z);
+    // kitchen: cool fluorescents overhead, warm work lights under the hood
+    this.kLight = indoor(new THREE.PointLight(0xF6F1E2, 0, 9, 1.6), 2.2); this.kLight.position.set(-2.6, 2.3, -4.4);
+    this.kLight2 = indoor(new THREE.PointLight(0xF6F1E2, 0, 7, 1.6), 1.4); this.kLight2.position.set(1.4, 2.3, -4.4);
+    for (const x of [-4.6, -2.2]) { const sp = new THREE.SpotLight(0xFFD9A0, 0, 3.2, 0.95, 0.6, 1.3); sp.position.set(x, 2.05, -6.45); sp.target.position.set(x, 0.9, -6.5); indoor(sp, 10); }
     this.fireLight = new THREE.PointLight(C.orange, 0, 6);
     this.scene.add(this.fireLight);
   }
+
 
   buildShell() {
     const S = this.static;
@@ -74,7 +98,7 @@ export class World {
     const tex = (draw, rx, ry) => { const t = canvasTex(256, 256, draw); t.tex.wrapS = t.tex.wrapT = THREE.RepeatWrapping; t.tex.repeat.set(rx, ry); return t.tex; };
     const checker = (ctx) => { for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) { ctx.fillStyle = (x + y) % 2 ? '#1E1E20' : '#F4F1E8'; ctx.fillRect(x * 128, y * 128, 128, 128); } ctx.strokeStyle = 'rgba(120,110,100,0.35)'; ctx.lineWidth = 3; ctx.strokeRect(0, 0, 256, 256); };
     floor(-8, -2, 8, 9, new THREE.MeshStandardMaterial({ map: tex(checker, 16, 11), roughness: 0.35 }));
-    const quarry = (ctx) => { ctx.fillStyle = '#8E8678'; ctx.fillRect(0, 0, 256, 256); for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { ctx.fillStyle = (x + y) % 2 ? '#B8A994' : '#C4B6A0'; ctx.fillRect(x * 64 + 2, y * 64 + 2, 60, 60); } };
+    const quarry = (ctx) => { ctx.fillStyle = '#4A3A30'; ctx.fillRect(0, 0, 256, 256); for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { const v = 0.9 + ((x * 7 + y * 13) % 5) * 0.05; ctx.fillStyle = `rgb(${Math.round(168 * v)},${Math.round(84 * v)},${Math.round(58 * v)})`; ctx.fillRect(x * 64 + 3, y * 64 + 3, 58, 58); } };
     floor(-8, -7, 3, -2, new THREE.MeshStandardMaterial({ map: tex(quarry, 5.5, 2.5), roughness: 0.6 }));
     const mosaic = (ctx) => { ctx.fillStyle = '#B9C4C8'; ctx.fillRect(0, 0, 256, 256); for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { ctx.fillStyle = (x * 7 + y * 3) % 5 ? '#F2F4F2' : '#7FC6C0'; ctx.fillRect(x * 32 + 1, y * 32 + 1, 30, 30); } };
     floor(3, -7, 8, -2, new THREE.MeshStandardMaterial({ map: tex(mosaic, 5, 5), roughness: 0.3 }));
@@ -82,7 +106,17 @@ export class World {
     const street = new THREE.Mesh(new THREE.PlaneGeometry(50, 20), paint(0x45454B, 0.9)); street.rotation.x = -Math.PI / 2; street.position.set(0, -0.02, 25); S.add(street);
 
     // ---- ceiling + lights ----
-    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshStandardMaterial({ color: 0xEFE7D4, roughness: 0.9, emissive: 0x6E6658, emissiveIntensity: 0.6 })); ceil.rotation.x = Math.PI / 2; ceil.position.set(0, H, 1); S.add(ceil);
+    const tin = canvasTex(256, 256, (ctx) => {
+      ctx.fillStyle = '#E9E0CB'; ctx.fillRect(0, 0, 256, 256);
+      ctx.strokeStyle = '#C9BCA0'; ctx.lineWidth = 6; ctx.strokeRect(3, 3, 250, 250);
+      ctx.strokeStyle = '#FBF5E6'; ctx.lineWidth = 3; ctx.strokeRect(12, 12, 232, 232);
+      ctx.fillStyle = '#D8CBAE'; ctx.beginPath(); ctx.arc(128, 128, 54, 0, 7); ctx.fill();
+      ctx.fillStyle = '#F4ECD9'; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.ellipse(128 + Math.cos(a) * 34, 128 + Math.sin(a) * 34, 16, 7, a, 0, 7); ctx.fill(); }
+      ctx.fillStyle = '#C9BCA0'; ctx.beginPath(); ctx.arc(128, 128, 12, 0, 7); ctx.fill();
+      for (const [x, y] of [[30, 30], [226, 30], [30, 226], [226, 226]]) { ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fill(); }
+    });
+    tin.tex.wrapS = tin.tex.wrapT = THREE.RepeatWrapping; tin.tex.repeat.set(26, 26);
+    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshStandardMaterial({ map: tin.tex, color: 0xFFFFFF, roughness: 0.55, metalness: 0.15, emissive: 0x6E6658, emissiveIntensity: 0.35 })); ceil.rotation.x = Math.PI / 2; ceil.position.set(0, H, 1); S.add(ceil);
     this.lightPanels = [];
     const panel = (x, z, w = 1.6, d = 0.5) => { rbox(S, w + 0.1, 0.05, d + 0.1, M.steel, x, H - 0.05, z, 0.015); this.lightPanels.push(rbox(S, w, 0.02, d, emissive(0xFFF6DC, 0.9), x, H - 0.065, z, 0.008)); };
     panel(-5.2, -4.5); panel(-0.6, -4.5); panel(3.8, -4.5, 0.5, 1.2); panel(6.3, -5.8, 0.8, 0.5); panel(6.3, -3.2, 0.8, 0.5);
@@ -94,17 +128,46 @@ export class World {
     }
 
     // ---- walls ----
-    const subway = canvasTex(256, 256, (ctx) => { ctx.fillStyle = '#BFB8A8'; ctx.fillRect(0, 0, 256, 256); for (let y = 0; y < 8; y++) for (let x = -1; x < 4; x++) { ctx.fillStyle = '#F2EFE6'; ctx.fillRect(x * 64 + (y % 2) * 32 + 2, y * 32 + 2, 60, 28); } });
-    subway.tex.wrapS = subway.tex.wrapT = THREE.RepeatWrapping;
-    const tile = (len) => { const t = subway.tex.clone(); t.needsUpdate = true; t.repeat.set(len, 6); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.25 }); };
+    // full-height tile: jade wainscot, an oxblood pinstripe, then cream tiles that yellow a little toward the top
+    const subway = canvasTex(256, 768, (ctx) => {
+      ctx.fillStyle = '#8F887A'; ctx.fillRect(0, 0, 256, 768);
+      const px = 768 / H;
+      for (let row = 0; row < 24; row++) {
+        const yb = row * 32, y = 768 - yb - 32, h = yb / px;   // h = height of this row's bottom, in metres
+        const base = h < 1.5 ? [96, 158, 140] : h < 1.625 ? [128, 38, 42] : [240, 234, 218];
+        for (let x = -1; x < 5; x++) {
+          const j = (Math.sin(row * 12.9 + x * 78.2) * 43758.5) % 1, v = 1 + (j - 0.5) * 0.08;
+          ctx.fillStyle = `rgb(${base.map((c) => Math.round(c * v)).join(',')})`;
+          ctx.fillRect(x * 64 + (row % 2) * 32 + 2, y + 2, 60, 28);
+        }
+      }
+      const g = ctx.createLinearGradient(0, 768, 0, 560); g.addColorStop(0, 'rgba(60,45,30,0.28)'); g.addColorStop(1, 'rgba(60,45,30,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 560, 256, 208);
+    });
+    subway.tex.wrapS = THREE.RepeatWrapping;
+    // y0..y1 lets the short pieces around the pass window take the right slice of the pattern
+    const tile = (len, y0 = 0, y1 = H) => { const t = subway.tex.clone(); t.needsUpdate = true; t.repeat.set(len, (y1 - y0) / H); t.offset.y = y0 / H; return new THREE.MeshStandardMaterial({ map: t, roughness: 0.25 }); };
+    // dining wallpaper: cream with little atomic starbursts and boomerangs, 1 m repeat
+    const paperTex = canvasTex(256, 256, (ctx) => {
+      ctx.fillStyle = '#F1E4C6'; ctx.fillRect(0, 0, 256, 256);
+      ctx.strokeStyle = 'rgba(200,170,120,0.25)'; ctx.lineWidth = 2;
+      for (let x = 0; x < 256; x += 32) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 256); ctx.stroke(); }
+      const star = (x, y, r, col) => { ctx.strokeStyle = col; ctx.lineWidth = 3; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); ctx.stroke(); } ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, 4, 0, 7); ctx.fill(); };
+      const boom = (x, y, rot, col) => { ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(-22, 6); ctx.quadraticCurveTo(0, -18, 22, 6); ctx.quadraticCurveTo(0, -6, -22, 6); ctx.fill(); ctx.restore(); };
+      star(56, 60, 18, '#C8463E'); star(190, 180, 14, '#2E9C95'); star(200, 40, 9, '#D9A23A'); star(60, 200, 10, '#D9A23A');
+      boom(150, 100, 0.5, '#2E9C95'); boom(90, 140, -0.7, '#C8463E'); boom(30, 110, 2.2, '#D9A23A'); boom(220, 230, 1.1, '#C8463E');
+    });
+    paperTex.tex.wrapS = paperTex.tex.wrapT = THREE.RepeatWrapping;
+    const paper = (len, h) => { const t = paperTex.tex.clone(); t.needsUpdate = true; t.repeat.set(len / 0.9, h / 0.9); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.85 }); };
     const plaster = paint(0xF2E8D2, 0.85);
     // wall along x (z fixed) or along z (x fixed). finish: per side 'tile' | 'diner' | null
     const wallX = (x0, x1, z, sideNeg, sidePos, y0 = 0, y1 = H, collide = true) => {
       rbox(S, x1 - x0, y1 - y0, 0.2, plaster, (x0 + x1) / 2, y0, z, 0);
       if (collide) col(x0, z - 0.12, x1, z + 0.12);
       for (const [side, sgn] of [[sideNeg, -1], [sidePos, 1]]) {
-        if (side === 'tile') rbox(S, x1 - x0, y1 - y0, 0.02, tile(x1 - x0), (x0 + x1) / 2, y0, z + sgn * 0.11, 0);
+        if (side === 'tile') rbox(S, x1 - x0, y1 - y0, 0.02, tile(x1 - x0, y0, y1), (x0 + x1) / 2, y0, z + sgn * 0.11, 0);
         if (side === 'diner' && y0 < 1.1) { rbox(S, x1 - x0, Math.min(1.1, y1) - y0, 0.04, M.teal, (x0 + x1) / 2, y0, z + sgn * 0.12, 0.01); if (y1 > 1.1) rbox(S, x1 - x0, 0.05, 0.06, M.chrome, (x0 + x1) / 2, 1.1, z + sgn * 0.13, 0.01); }
+        if (side === 'diner' && y1 > 1.15) { const b = Math.max(1.15, y0); rbox(S, x1 - x0, y1 - b, 0.01, paper(x1 - x0, y1 - b), (x0 + x1) / 2, b, z + sgn * 0.105, 0); }
       }
     };
     const wallZ = (z0, z1, x, sideNeg, sidePos) => {
@@ -112,7 +175,7 @@ export class World {
       col(x - 0.12, z0, x + 0.12, z1);
       for (const [side, sgn] of [[sideNeg, -1], [sidePos, 1]]) {
         if (side === 'tile') { const m = tile(z1 - z0); rbox(S, 0.02, H, z1 - z0, m, x + sgn * 0.11, 0, (z0 + z1) / 2, 0); }
-        if (side === 'diner') { rbox(S, 0.04, 1.1, z1 - z0, M.teal, x + sgn * 0.12, 0, (z0 + z1) / 2, 0.01); rbox(S, 0.06, 0.05, z1 - z0, M.chrome, x + sgn * 0.13, 1.1, (z0 + z1) / 2, 0.01); }
+        if (side === 'diner') { rbox(S, 0.04, 1.1, z1 - z0, M.teal, x + sgn * 0.12, 0, (z0 + z1) / 2, 0.01); rbox(S, 0.06, 0.05, z1 - z0, M.chrome, x + sgn * 0.13, 1.1, (z0 + z1) / 2, 0.01); rbox(S, 0.01, H - 1.15, z1 - z0, paper(z1 - z0, H - 1.15), x + sgn * 0.105, 1.15, (z0 + z1) / 2, 0); }
       }
     };
     // outer walls
@@ -131,7 +194,7 @@ export class World {
     for (const x of L.windows) {
       wallX(x - 1, x + 1, front, 'diner', null, 0, 0.9);
       wallX(x - 1, x + 1, front, null, null, 2.3, H, false);
-      rbox(S, 2.0, 1.4, 0.04, paint(0xA8DCEA, 0.05, { emissive: 0x6FB8D0, emissiveIntensity: 0.4 }), x, 0.9, front, 0);
+      const glassPane = rbox(S, 2.0, 1.4, 0.04, new THREE.MeshStandardMaterial({ color: 0xBFE6F2, roughness: 0.05, transparent: true, opacity: 0.25, emissive: 0x9ED4E8, emissiveIntensity: 0.25 }), x, 0.9, front, 0); glassPane.castShadow = false; glassPane.userData.noShadow = true;
       for (const [w, h, dx, dy] of [[2.06, 0.06, 0, 0.88], [2.06, 0.06, 0, 2.28], [0.06, 1.46, -1.0, 0.88], [0.06, 1.46, 1.0, 0.88], [0.04, 1.4, 0, 0.9]]) rbox(S, w, h, 0.08, M.chrome, x + dx, dy, front - 0.03, 0.01);
     }
     wallX(L.door.x - dW, L.door.x + dW, front, null, null, 2.3, H, false);
@@ -395,6 +458,7 @@ export class World {
     for (const l of this.staticLabels) l.o.visible = l.zone === 'pass' || l.zone === myZone;
     this.updateTV(s);
     this.updateEnvironment(s, time);
+    this.updateLife(s, dt, time);
 
     // food/plates at stations + progress labels
     for (const at in s.stations) {
@@ -675,11 +739,36 @@ export class World {
     });
   }
 
+  // fans, the clock, flickering neon and steam from whatever's cooking
+  updateLife(s, dt, time) {
+    const D = this.decor;
+    for (const b of D.fans) b.rotation.y += dt * (s.power ? 2.4 : 0.3);
+    const prog = s.solo ? (s.t % 600) / 600 : Math.min(1, s.t / s.shiftLen);
+    const mins = 7 * 60 + prog * 420;
+    D.clock.minute.rotation.z = -((mins % 60) / 60) * Math.PI * 2;
+    D.clock.hour.rotation.z = -(((mins / 60) % 12) / 12) * Math.PI * 2;
+    D.flick = D.flick || D.neon.map(() => 0);
+    D.neon.forEach((m, i) => {
+      if (D.flick[i] <= 0 && Math.random() < dt * 0.06) D.flick[i] = 0.25 + Math.random() * 0.5;
+      if (D.flick[i] > 0) D.flick[i] -= dt;
+      const on = !s.power ? 0 : D.flick[i] > 0 ? (Math.random() < 0.5 ? 0.15 : 1) : 1;
+      m.material.emissiveIntensity = 4 * on;
+    });
+    const src = [];
+    s.stations.griddle.forEach((it, i) => { if (it?.type === 'food') src.push({ x: L.griddle.slotX[i], y: TOP + 0.12, z: L.griddle.z, rate: it.q?.burnt ? 1 : 2.4, size: 0.32 }); });
+    s.stations.fryer.forEach((it, i) => { if (it?.type === 'food' && it.lowered) src.push({ x: L.fryer.slotX[i], y: TOP + 0.25, z: L.fryer.z, rate: 3.5, size: 0.38 }); });
+    s.stations.toaster.forEach((it, i) => { if (it?.type === 'food' && !it.popped) src.push({ x: L.toaster.x + (i ? 0.15 : -0.15), y: TOP + 0.26, z: L.toaster.z, rate: 0.8, size: 0.2 }); });
+    if (s.coffeeM) src.push({ x: L.coffee.x + 0.08, y: 1.25, z: L.coffee.z, rate: s.coffeeM.mug.p < 1 ? 2 : 0.6, size: 0.18 });
+    s.trays.forEach((tr, i) => { if (tr?.plate?.items.some((f) => f.age < 25)) src.push({ x: L.trays[i].x, y: L.pass.shelfY + 0.12, z: L.wallZ, rate: 0.9, size: 0.2 }); });
+    this.life.update(dt, time, src);
+  }
+
   updateEnvironment(s, time) {
     const dim = !s.power;
-    this.hemi.intensity = dim ? 0.25 : 0.9;
-    this.sun.intensity = dim ? 0.35 : 1.6;
-    this.kLight.intensity = dim ? 0 : 6; this.dLight.intensity = dim ? 0 : 5;
+    this.hemi.intensity = dim ? 0.12 : 0.32;
+    // indoor lights die with the power (the daylight doesn't); the kitchen fluorescent stutters now and then
+    const stutter = Math.sin(time * 0.7) > 0.985 ? (Math.random() < 0.5 ? 0.15 : 1) : 1;
+    for (const [l, base] of this.indoor) l.intensity = dim ? 0 : base * (l === this.kLight ? stutter : 1);
     this.lightPanels.forEach((p) => { p.material.emissiveIntensity = dim ? 0 : 0.9; });
     this.neon.forEach((n) => { n.material.color.setHex(dim ? 0x333333 : 0xFFFFFF); });
     this.printerLight.material.emissive.setHex(!s.power ? 0x000000 : s.jam ? (Math.floor(time * 4) % 2 ? 0xFF2020 : 0x000000) : 0x33FF66);

@@ -28,7 +28,7 @@ export const M = {
   glass: shared(new THREE.MeshPhysicalMaterial({ color: 0xDDEEF2, roughness: 0.05, transmission: 0.0, transparent: true, opacity: 0.32, metalness: 0 })),
   frost: shared(new THREE.MeshStandardMaterial({ color: 0xE8F4F8, roughness: 0.3, transparent: true, opacity: 0.55 })),
   wood: shared(new THREE.MeshStandardMaterial({ color: 0xB9844E, roughness: 0.6 })),
-  butcher: shared(new THREE.MeshStandardMaterial({ color: 0xD9A866, roughness: 0.55 })),
+  butcher: shared(new THREE.MeshStandardMaterial({ color: 0xB57D45, roughness: 0.62 })),
   oil: shared(new THREE.MeshStandardMaterial({ color: 0xD9A030, roughness: 0.05, metalness: 0.1, emissive: 0x4A3000, emissiveIntensity: 0.35, transparent: true, opacity: 0.55 })),
   water: shared(new THREE.MeshStandardMaterial({ color: 0x8FC4D8, roughness: 0.05, transparent: true, opacity: 0.7 })),
   paper: shared(new THREE.MeshStandardMaterial({ color: 0xF7F3EA, roughness: 0.85 })),
@@ -39,8 +39,10 @@ export const emissive = (color, intensity = 1) => new THREE.MeshStandardMaterial
 // ---- geometry helpers (all return the mesh) ------------------------------------
 const toMat = (m) => (m instanceof THREE.Material ? m : paint(m));
 export function rbox(parent, w, h, d, m, x = 0, y = 0, z = 0, r = null) {
-  const rad = r ?? Math.min(0.03, Math.min(w, h, d) * 0.22);
-  const geo = rad > 0.002 ? new RoundedBoxGeometry(w, h, d, 2, rad) : new THREE.BoxGeometry(w, h, d);
+  // softer edges everywhere (r = 0 keeps a box crisp, e.g. walls)
+  const soft = Math.min(0.05, Math.min(w, h, d) * 0.28);
+  const rad = r === 0 ? 0 : Math.max(r ?? 0, soft);
+  const geo = rad > 0.002 ? new RoundedBoxGeometry(w, h, d, rad > 0.025 ? 4 : 2, rad) : new THREE.BoxGeometry(w, h, d);
   const mesh = new THREE.Mesh(geo, toMat(m));
   mesh.position.set(x, y + h / 2, z); mesh.castShadow = mesh.receiveShadow = true;
   parent?.add(mesh); return mesh;
@@ -448,7 +450,7 @@ export function prepProps() {
 }
 export function hoodModel(w) {
   const g = new THREE.Group();
-  rbox(g, w, 0.45, 0.95, paint(0xD5DADD, 0.5), 0, 0, 0, 0.02);
+  rbox(g, w, 0.45, 0.95, paint(0xA3AAAE, 0.55), 0, 0, 0, 0.02);
   for (let i = 0; i < Math.floor(w / 0.55); i++) {
     const f = rbox(g, 0.5, 0.012, 0.42, paint(0x9AA1A6, 0.4), -w / 2 + 0.3 + i * 0.55, -0.005, 0.05, 0.004);
     for (let j = 0; j < 6; j++) rbox(f, 0.48, 0.004, 0.012, paint(0x7F868B, 0.5), 0, -0.006, -0.18 + j * 0.07, 0);
@@ -625,7 +627,7 @@ export function boothModel() { // seat at origin, back toward +z
 }
 export function tableModel() {
   const g = new THREE.Group();
-  rbox(g, 1.2, 0.04, 0.8, paint(0xF2E9D6, 0.25), 0, 0.72, 0, 0.03);
+  rbox(g, 1.2, 0.04, 0.8, paint(0xE4D6BA, 0.72), 0, 0.72, 0, 0.03);
   rbox(g, 1.22, 0.035, 0.82, M.chrome, 0, 0.69, 0, 0.015);
   cyl(g, 0.045, 0.06, 0.66, M.chrome, 0, 0.03, 0, 16);
   lathe(g, [[0, 0], [0.28, 0], [0.26, 0.02], [0.06, 0.04], [0, 0.04]], M.chrome);
@@ -654,7 +656,7 @@ export function chairModel(color = C.cherry) { // seat faces -z (you sit looking
 }
 export function roundTableModel() {
   const g = new THREE.Group();
-  cyl(g, 0.5, 0.5, 0.04, paint(0xF2E9D6, 0.25), 0, 0.72, 0, 36);
+  cyl(g, 0.5, 0.5, 0.04, paint(0xE4D6BA, 0.72), 0, 0.72, 0, 36);
   torus(g, 0.5, 0.018, M.chrome, 0, 0.74, 0).rotation.x = Math.PI / 2;
   cyl(g, 0.045, 0.06, 0.68, M.chrome, 0, 0.03, 0, 16);
   lathe(g, [[0, 0], [0.3, 0], [0.28, 0.02], [0.06, 0.04], [0, 0.04]], M.chrome);
@@ -662,7 +664,7 @@ export function roundTableModel() {
 }
 export function squareTableModel() {
   const g = new THREE.Group();
-  rbox(g, 0.75, 0.04, 0.75, paint(0xF2E9D6, 0.25), 0, 0.72, 0, 0.03);
+  rbox(g, 0.75, 0.04, 0.75, paint(0xE4D6BA, 0.72), 0, 0.72, 0, 0.03);
   rbox(g, 0.77, 0.035, 0.77, M.chrome, 0, 0.69, 0, 0.015);
   cyl(g, 0.045, 0.06, 0.66, M.chrome, 0, 0.03, 0, 16);
   lathe(g, [[0, 0], [0.26, 0], [0.24, 0.02], [0.06, 0.04], [0, 0.04]], M.chrome);

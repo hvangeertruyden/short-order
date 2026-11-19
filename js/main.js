@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 import * as THREE from 'three';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
+import { createPost } from './fx.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { newFood } from './kitchen.js';
 import { itemModel } from './models.js';
@@ -40,7 +41,7 @@ scene.background = new THREE.Color(0x9FD8E8);
 // soft studio reflections so chrome and steel actually look like metal
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 1.0;
+scene.environmentIntensity = 0.6;
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 80);
 camera.rotation.order = 'YXZ';
 scene.add(camera);
@@ -49,13 +50,15 @@ const rcptGroup = new THREE.Group(); rcptGroup.position.set(-0.3, -0.26, -0.5); 
 camera.add(new THREE.PointLight(0xFFFFFF, 0.6, 1.5));
 
 const world = new World(scene);
+const post = createPost(renderer, scene, camera);
+try { const q = localStorage.getItem('shortorder.quality'); if (q != null) post.setQuality(Number(q)); } catch {}
 const controls = new Controls(renderer.domElement);
 const raycaster = new THREE.Raycaster();
 raycaster.far = 12;
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight); labels.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(window.innerWidth, window.innerHeight); labels.setSize(window.innerWidth, window.innerHeight); post.setSize(window.innerWidth, window.innerHeight);
 });
 
 // ---- game session state --------------------------------------------------
@@ -285,6 +288,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Escape') { if (G.state.npc.cid && G.role === 'server') act({ type: 'closeNpc' }); G.target = null; ui.toggleHelp(false); return; }
   if (e.code === 'KeyH') { ui.toggleHelp(); return; }
   if (e.code === 'KeyG') { const P = G.state.players[G.role]; if (P.held || (G.role === 'cook' && P.receipt)) act({ type: 'drop' }); else audio.play('deny'); return; }
+  if (e.code === 'KeyV') { const q = post.cycle(); try { localStorage.setItem('shortorder.quality', String(q)); } catch {} ui.localToast(['🖥️ Graphics: low', '🖥️ Graphics: medium', '🖥️ Graphics: high'][q]); return; }
   if (e.code === 'KeyN') { audio.setMusicEnabled(!audio.musicEnabled()); ui.localToast(audio.musicEnabled() ? '🎵 Diner radio on' : '🎵 Diner radio off'); return; }
   if (e.code === 'KeyM') { G.muted = !G.muted; audio.setVolume(G.muted ? 0 : 0.35); ui.localToast(G.muted ? '🔇 Muted' : '🔊 Sound on'); return; }
   const m = /^Digit([1-9])$/.exec(e.code);
@@ -327,12 +331,13 @@ function setHighlight(obj) {
 let last = performance.now(), time = 0;
 const PERF = { step: 0, render: 0, labels: 0, frames: 0 };
 function loop(now) {
+  const rawMs = now - last;
   const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
   const p0 = performance.now();
   if (G.state) step(dt);
   else idleCamera(dt);
   const p1 = performance.now();
-  renderer.render(scene, camera);
+  post.render(rawMs);
   const p2 = performance.now();
   labels.render(scene, camera);
   const p3 = performance.now();
@@ -368,7 +373,9 @@ function step(dt) {
   // camera
   G.shake = Math.max(0, G.shake - dt);
   const sh = G.shake * 0.08;
-  camera.position.set(G.me.x + (Math.random() - 0.5) * sh, 1.6 + (Math.random() - 0.5) * sh, G.me.z);
+  G.walkPhase = (G.walkPhase || 0) + (G.movedRecently > 0 ? dt * 9 : 0);
+  const bob = G.movedRecently > 0 ? Math.sin(G.walkPhase) * 0.028 : 0;
+  camera.position.set(G.me.x + (Math.random() - 0.5) * sh, 1.6 + bob + (Math.random() - 0.5) * sh, G.me.z);
   camera.rotation.set(controls.pitch, G.me.yaw, 0);
   if (window.__camOverride) { const o = window.__camOverride; camera.position.set(...o.pos); camera.rotation.set(...o.rot); }
 
@@ -461,7 +468,7 @@ function step(dt) {
 requestAnimationFrame(loop);
 window.__G = G; // handy for debugging in the console
 window.__dbg = {
-  PERF, renderer, scene, world, camera, controls, act: (a) => act(a),
+  PERF, renderer, scene, world, camera, controls, post, act: (a) => act(a),
   // advance the game by hand (for inspecting animation frame by frame)
-  advance(seconds, fps = 60) { const dt = 1 / fps; for (let t = 0; t < seconds; t += dt) { time += dt; if (G.state) step(dt); } renderer.render(scene, camera); labels.render(scene, camera); },
+  advance(seconds, fps = 60) { const dt = 1 / fps; for (let t = 0; t < seconds; t += dt) { time += dt; if (G.state) step(dt); } post.render(0); labels.render(scene, camera); },
 };
