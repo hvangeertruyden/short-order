@@ -93,6 +93,7 @@ export function thingName(h) {
     case 'tray': return 'Tray' + (h.plate.items.length ? ` (${h.plate.items.map(foodName).join(', ')})` : '');
     case 'dishes': return `${h.n} dirty plate${h.n > 1 ? 's' : ''}`;
     case 'ext': return 'Fire extinguisher';
+    case 'plunger': return 'Plunger';
     case 'mop': return 'Mop';
     case 'cup': case 'mug': return drinkName(h);
   }

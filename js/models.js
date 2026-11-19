@@ -727,3 +727,23 @@ export function bucketModel() {
   torus(g, 0.22, 0.008, M.darkSteel, 0, 0.42, 0, Math.PI).rotation.y = Math.PI / 2;
   return g;
 }
+
+export function plungerModel() { // origin at the bottom of the cup
+  const g = new THREE.Group();
+  lathe(g, [[0, 0], [0.085, 0], [0.08, 0.05], [0.04, 0.09], [0.018, 0.1], [0, 0.1]], paint(0xC8262B, 0.4));
+  cyl(g, 0.014, 0.014, 0.55, M.wood, 0, 0.09, 0, 10);
+  sph(g, 0.02, M.wood, 0, 0.65, 0, 1, 1, 1, 8);
+  return g;
+}
+export function tpMessModel() { // cartoon toilet-paper streamers on the floor
+  const g = new THREE.Group();
+  const paper = paint(0xFFFFFF, 0.8);
+  for (let i = 0; i < 5; i++) {
+    const a = i * 1.3, r = 0.25 + (i % 3) * 0.15;
+    const pts = [];
+    for (let j = 0; j <= 8; j++) { const t = j / 8; pts.push([Math.cos(a + t * 2.4) * r * (0.4 + t), 0.015 + Math.abs(Math.sin(t * 9 + i)) * 0.03, Math.sin(a + t * 2.4) * r * (0.4 + t)]); }
+    const m = tube(g, pts, 0.022, paper, 24); m.scale.y = 0.35; m.castShadow = false;
+  }
+  const roll = cyl(g, 0.05, 0.05, 0.1, paper, 0.25, 0.05, -0.2, 14); roll.rotation.z = Math.PI / 2; roll.position.y = 0.05;
+  return g;
+}

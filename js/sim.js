@@ -3,6 +3,7 @@
 // `this.s` is plain JSON so it can be sent to the other player as-is.
 // ---------------------------------------------------------------------------
 import { MENU, DRINKS, STATIONS, RECIPES, QUALITY_PAY, TUNING as T, L, TABLES, EVENTS, DIRECTOR, LINES } from './data.js';
+import { installParty } from './party.js';
 import { installKitchen, orderList, dishIssues, payMultiplier, drinkOf, drinkIssues, isMenuItem } from './kitchen.js';
 
 const RECIPE_OF = (it) => RECIPES[it.kind];
@@ -79,7 +80,7 @@ export function newState({ shiftLen = 600, hostRole = 'cook', solo = false, shif
     tables: TABLES.map((t) => ({ n: t.n, cust: null, tent: false, dirty: false, plate: null })),
     customers: [], orderLine: [], payLine: [], puddles: [], floor: [], fountain: null, coffeeM: null,
     fire: null, alarm: false, alarmOffAt: 0, power: true, registerBootUntil: 0, jam: 0,
-    jukebox: false, blenderNoise: false, mops: { dining: true, kitchen: true }, extOnWall: true,
+    jukebox: false, blenderNoise: false, mops: { dining: true, kitchen: true }, plungerHome: true, rooms: [{ occ: null, clog: 0 }, { occ: null, clog: 0 }], extOnWall: true,
     inspector: null, bellAt: -10,
     noise: [],
     ev: { next: solo ? 75 : shiftLen * DIRECTOR.calmUntil + 8, cd: {}, log: [] },
@@ -501,6 +502,7 @@ export class Sim {
       if (s.fire) { fine += 30; found.push('a FIRE'); }
       const dirtyTrays = s.trays.filter((t) => t?.plate?.dirty).length; if (dirtyTrays) { fine += 10 * dirtyTrays; found.push('dirty plates in the pass'); }
       const floorR = s.receipts.filter((r) => r.loc === 'floor').length; if (floorR) { fine += 5 * floorR; found.push('receipts on the kitchen floor'); }
+      const clogs = s.rooms.filter((r) => r.clog > 0).length; if (clogs) { fine += 15 * clogs; found.push('a clogged toilet'); }
       const floorF = s.floor.filter((f) => f.thing.type === 'food' || f.thing.type === 'plate').length; if (floorF) { fine += 8 * floorF; found.push('food on the floor'); }
       if (fine) {
         fine *= k;
@@ -573,7 +575,7 @@ export class Sim {
         this.sound('splash', 'dining');
         break;
       case 'rush':
-        for (let i = 0; i < 4; i++) { const c = this.spawnCustomer(true); if (c) { c.x += i * 0.4; c.z += i * 0.5; } }
+        for (let i = 0; i < 2; i++) { const c = this.spawnCustomer(true); if (c) { c.x += i * 0.4; c.z += i * 0.5; } }
         this.sound('bus', 'dining');
         break;
       case 'greasyRail':
@@ -594,6 +596,7 @@ export class Sim {
         return st?.busy && !a.topping ? [st.busy, st.verb + '...'] : null;
       }
       case 'mop': return P.held?.type === 'mop' ? [T.mopTime, 'Scrubbing...'] : null;
+      case 'plunge': return P.held?.type === 'plunger' ? [0.7, 'Plunging...'] : null;
       case 'spray': return [T.sprayTime, 'SPRAYING!'];
       case 'resetBreaker': return [T.breakerTime, 'Resetting breaker...'];
       case 'cycleBreaker': return [T.breakerTime, 'Flipping the breaker...'];
@@ -796,9 +799,9 @@ Sim.prototype.handlers = {
     } else if (/sorry|apolog|my bad|forgive/.test(t)) {
       this.npcSay(c, calm(0.15) ? pick(LINES.sorry) : 'Sorry doesn\'t cook food!');
     } else if (/table|number|where.*sit|sitting/.test(t)) {
-      this.npcSay(c, c.table ? `I'm at table ${c.table}. Says so on the tent!` : "I don't have a table yet!");
+      this.npcSay(c, c.table ? `Table ${c.table}. Says so on the tent!` : "We don't have a table yet!");
     } else if (/order|what.*(want|have|get)|again|repeat|remind/.test(t)) {
-      this.npcSay(c, c.heard || c.ticket ? `I ordered ${orderList(c.order.items)}${c.order.drink ? ' and a ' + DRINKS[c.order.drink].name.toLowerCase() : ''}.` : 'You haven\'t taken my order yet!');
+      { const l = this.leaderOf(c); this.npcSay(c, l !== c ? `Ask ${l.name}, they ordered.` : c.heard || c.ticket ? `We ordered ${this.orderSummary(c)}.` : 'You haven\'t taken our order yet!'); }
     } else if (/soon|minute|coming|wait|hold|almost|patien/.test(t)) {
       this.npcSay(c, calm(0.07) ? 'Okay... I\'ll wait. A LITTLE longer.' : pick(LINES.hurry));
     } else if (/^(hi|hello|hey|howdy|morning|yo)\b/.test(t)) {
@@ -952,3 +955,4 @@ Sim.prototype.handlers = {
 };
 
 installKitchen(Sim);
+installParty(Sim);

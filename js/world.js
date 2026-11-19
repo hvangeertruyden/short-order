@@ -336,12 +336,14 @@ export class World {
     // restrooms: toilet, washbasin + mirror, doors from the corridor, a sign
     const rx = L.corridor.x1 + 0.1;
     [[-7, -4.5, [-6.3, -5.5]], [-4.5, -2, [-3.6, -2.8]]].forEach(([z0, z1, [d0, d1]], i) => {
-      const t = Mo.toiletModel(); t.position.set(7.75, 0, (z0 + z1) / 2 + 0.3); S.add(t);
+      const tg = ia(grp(S, L.rooms[i].toilet.x, 0, L.rooms[i].toilet.z), `toilet:${i}`); tg.add(Mo.toiletModel()); hitBox(tg, 0.6, 0.8, 0.5, 0, 0, 0);
       const wb = Mo.washbasinModel(); wb.position.set(6.2, 0, i ? z1 - 0.12 : z0 + 0.12); wb.rotation.y = i ? 0 : Math.PI; S.add(wb);
       rbox(S, 0.25, 0.3, 0.12, M.ceramic, 7.9, 1.1, (z0 + z1) / 2 - 0.6, 0.03);   // hand dryer
-      const d = Mo.doorModel(0.8, 0x7A4A2A, i ? 'WC' : 'WC'); d.position.set(rx - 0.02, 0, d0); d.rotation.y = -Math.PI / 2 - 1.1; S.add(d);
+      const d = Mo.doorModel(0.8, 0x7A4A2A, 'WC'); d.position.set(rx - 0.02, 0, d0); d.rotation.y = -Math.PI / 2 - 1.1; S.add(d);
+      (this.roomDoors ||= [])[i] = d;
       col(7.45, (z0 + z1) / 2, 8, (z0 + z1) / 2 + 0.6);
     });
+    { const g = ia(grp(S, L.plunger.x, 0.95, L.plunger.z), 'plunger'); rbox(g, 0.12, 0.04, 0.04, M.darkSteel, 0, 0.55, 0.06, 0.01); hitBox(g, 0.3, 0.75, 0.25, 0, 0, 0); this.plungerHook = g; }
     { const g = ia(grp(S, L.mopDining.x, 0, L.mopDining.z), 'dmop'); g.add(Mo.bucketModel()); hitBox(g, 0.5, 1.4, 0.5, 0, 0, 0); col(L.mopDining.x - 0.28, L.mopDining.z - 0.28, L.mopDining.x + 0.28, L.mopDining.z + 0.28); }
     Mo.decal(S, 1.1, 0.3, (c, w, h) => { c.fillStyle = '#1F3A4D'; c.fillRect(0, 0, w, h); c.fillStyle = '#F5EBD3'; c.font = 'bold 56px Bungee'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('RESTROOMS ↑', w / 2, h / 2 + 3); }, (L.corridor.x0 + L.corridor.x1) / 2, 2.3, L.wallZ + 0.0, Math.PI, 512, 140);
   }
@@ -469,6 +471,18 @@ export class World {
       }, this.trayAnchors[i]);
     });
 
+    // restroom doors close while someone's inside; clogged toilets bubble
+    s.rooms.forEach((room, i) => {
+      const d = this.roomDoors?.[i];
+      if (d) { const want = room.occ != null ? -Math.PI / 2 : -Math.PI / 2 - 1.1; d.rotation.y += (want - d.rotation.y) * Math.min(1, dt * 6); }
+      if (room.clog > 0) {
+        const T0 = L.rooms[i].toilet;
+        const b = this.ensure('clog:' + i, 'x', () => { const g = new THREE.Group(); g.userData.noHit = true; for (let j = 0; j < 7; j++) { const m = sph(g, 0.05, new THREE.MeshStandardMaterial({ color: 0xBFEFFF, roughness: 0.05, transparent: true, opacity: 0.7 }), 0, 0, 0, 1, 1, 1, 10); m.userData.off = j / 7; m.castShadow = false; } return g; });
+        b.position.set(T0.x - 0.15, 0.45, T0.z);
+        b.children.forEach((m) => { const t = (time * 0.7 + m.userData.off) % 1; m.position.set(Math.sin(m.userData.off * 20) * 0.12, t * 0.5, Math.cos(m.userData.off * 17) * 0.1); m.scale.setScalar(0.5 + t); m.material.opacity = 0.7 * (1 - t); });
+      }
+    });
+    if (s.plungerHome) { const pl = this.ensure('plungerHome', 'x', () => Mo.plungerModel()); pl.position.set(L.plunger.x, 0.98, L.plunger.z + 0.05); pl.rotation.set(0, 0, 0.05); }
     // mops standing in their buckets
     for (const [where, p] of [['dining', L.mopDining], ['kitchen', L.mopKitchen]]) {
       if (!s.mops[where]) continue;
@@ -503,9 +517,11 @@ export class World {
 
     // puddles
     for (const p of s.puddles) {
-      const colr = p.kind === 'sick' ? C.sick : p.kind === 'shake' ? C.pink : 0x5A2A10;
+      const colr = p.kind === 'sick' ? C.sick : p.kind === 'shake' ? C.pink : p.kind === 'flood' ? 0x3FB4F0 : 0x5A2A10;
       const o = this.ensure(`pud:${p.id}`, p.kind, () => {
+        if (p.kind === 'tp') { const g = Mo.tpMessModel(); ia(g, `puddle:${p.id}`); return g; }
         const g = new THREE.Group();
+        if (p.kind === 'flood') for (let i = 0; i < 9; i++) { const b = sph(g, 0.05 + (i % 3) * 0.02, new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.05, transparent: true, opacity: 0.75 }), Math.cos(i * 2.4) * 0.3, 0.03, Math.sin(i * 2.4) * 0.25, 1, 0.8, 1, 10); b.castShadow = false; }
         const m = cyl(g, 0.45, 0.45, 0.008, new THREE.MeshStandardMaterial({ color: colr, roughness: 0.05, transparent: true, opacity: 0.85 }), 0, 0.004, 0, 24); m.scale.set(1, 1, 0.7); m.castShadow = false;
         for (let i = 0; i < 3; i++) { const b = cyl(g, 0.1 + i * 0.03, 0.1 + i * 0.03, 0.009, new THREE.MeshStandardMaterial({ color: colr, roughness: 0.05, transparent: true, opacity: 0.85 }), Math.cos(i * 2.1) * 0.4, 0.004, Math.sin(i * 2.1) * 0.3, 16); b.castShadow = false; }
         ia(g, `puddle:${p.id}`); return g;
@@ -526,8 +542,9 @@ export class World {
       const age = s.t - f.t0;
       const bounce = age < 0.35 ? (1 - (age / 0.35) ** 2) * 0.9 : age < 0.6 ? Math.sin(((age - 0.35) / 0.25) * Math.PI) * 0.08 : 0;
       o.position.set(f.x, bounce, f.z);
-      o.rotation.set(age < 0.6 ? (0.6 - age) * 2 : 0, f.rot, f.thing.type === 'mop' ? Math.PI / 2 : 0);
-      if (f.thing.type === 'mop') o.position.y += 0.03;
+      const lies = f.thing.type === 'mop' || f.thing.type === 'plunger';
+      o.rotation.set(age < 0.6 ? (0.6 - age) * 2 : 0, f.rot, lies ? Math.PI / 2 : 0);
+      if (lies) o.position.y += 0.05;
     }
 
     // customers + the other player
@@ -556,21 +573,23 @@ export class World {
 
   updatePerson(key, c, s, myRole, dt, time) {
     const obj = this.ensure(key, 'x', () => { const g = jellyPerson({ color: c.color, hat: c.hat, kind: c.kind, scale: 0.92 + ((c.id * 37) % 17) / 100 }); ia(g, key); const b = label('bubble'); b.position.set(0, 1.95, 0); g.add(b); g.userData.bubble = b; return g; });
-    const seated = (c.st === 'waitFood' || c.st === 'eating') && Math.hypot(c.x - seatOf(c.table).x, c.z - seatOf(c.table).z) < 0.05;
-    const pose = c.sick ? 'sick' : c.st === 'eating' && seated ? 'eat' : seated ? 'sit' : 'idle';
+    const lead = c.leader ? s.customers.find((o) => o.id === c.leader) : c;
+    const seated = !!c.seat && ['waitFood', 'eating', 'seated'].includes(c.st) && Math.hypot(c.x - c.seat.x, c.z - c.seat.z) < 0.05;
+    const eating = c.st === 'eating' || (c.st === 'seated' && lead?.st === 'eating');
+    const pose = c.sick ? 'sick' : eating && seated ? 'eat' : seated ? 'sit' : 'idle';
     const tint = c.sick ? { color: C.sick, amount: 0.75 } : c.stage === 'furious' ? { color: 0xFF2A2A, amount: 0.55 + Math.abs(Math.sin(time * 10)) * 0.2 } : c.stage === 'angry' ? { color: 0xFF4A3A, amount: 0.3 } : null;
     const showMood = c.kind === 'customer' && ['line', 'waitDrink', 'waitFood', 'pay', 'leaving'].includes(c.st);
     const slip = c.slipUntil && s.t < c.slipUntil ? 1 - (c.slipUntil - s.t) / 1.4 : 0;
-    const sy = seated ? seatOf(c.table).yaw : 0;
+    const sy = seated ? c.seat.yaw : 0;
     updateJelly(obj, dt, time, { x: c.x + (seated ? Math.sin(sy) * 0.08 : 0), z: c.z + (seated ? Math.cos(sy) * 0.08 : 0), y: seated ? 0.08 : 0, yaw: c.yaw, pose, mood: showMood ? c.stage : 'ok', tint, slip });
 
     const b = obj.userData.bubble;
     b.visible = myRole === 'server' && c.st !== 'leaving' || (myRole === 'server' && !!c.bubble);
     const icon = c.kind === 'inspector' ? '📋' : c.sick ? '🤢' : c.st === 'eating' ? '😋'
-      : c.st === 'waitDrink' ? (c.order.drink === 'coffee' ? '☕' : '🥤') : c.st === 'pay' ? '💵'
+      : c.st === 'waitDrink' ? (c.drinksLeft?.[0] === 'coffee' ? '☕' : '🥤') : c.st === 'pay' ? '💵'
       : s.noise.length && ['line', 'waitDrink', 'waitFood', 'pay'].includes(c.st) ? '🙉'
       : { ok: '', impatient: '😒', angry: '😠', furious: '🤬' }[c.stage];
-    const showBar = c.kind === 'customer' && ['line', 'waitDrink', 'waitFood', 'pay'].includes(c.st);
+    const showBar = c.kind === 'customer' && !c.leader && ['line', 'waitDrink', 'waitFood', 'pay'].includes(c.st);
     const tableTag = '';
     const html = `${c.bubble ? `<div class="say ${c.stage}">${esc(c.bubble)}</div>` : ''}<div class="row">${tableTag}${icon ? `<span class="ic">${icon}</span>` : ''}${showBar ? `<span class="pat"><i style="width:${Math.max(0, c.pat) * 100}%" class="${c.stage}"></i></span>` : ''}</div>`;
     if (b.element.dataset.html !== html) { b.element.innerHTML = html; b.element.dataset.html = html; }
@@ -642,7 +661,7 @@ export class World {
           ctx.fillStyle = '#8A5A00'; ctx.font = 'bold 22px Fredoka, sans-serif';
           ctx.font = 'bold 26px Fredoka, sans-serif'; ctx.fillText(`+${lines.length - shown.length} MORE`, x + 22, y + 4, cw - 44);
         }
-        if (t.drink) { ctx.fillStyle = '#8A98A0'; ctx.font = '19px Fredoka, sans-serif'; ctx.fillText(`+ ${t.drink.toUpperCase()} (FOH)`, x + 14, top + ch - 20); }
+        if (t.drinks?.length) { ctx.fillStyle = '#8A98A0'; ctx.font = '19px Fredoka, sans-serif'; ctx.fillText(`+ ${t.drinks.length} DRINK${t.drinks.length > 1 ? 'S' : ''} (FOH)`, x + 14, top + ch - 20); }
       });
       if (open.length > cols) {
         rr(W - 150, H - 46, 136, 34, 17, '#1F3A4D');
@@ -696,6 +715,7 @@ export function heldModel(h, grime = 0) {
     case 'mug': g.add(Mo.mugModel(h)); break;
     case 'ext': { const e = Mo.extinguisherModel(); e.position.y = -0.25; g.add(e); break; }
     case 'mop': { const m = Mo.mopModel(); m.position.y = 0.6; m.rotation.x = 0.75; g.add(m); break; }
+    case 'plunger': { const m = Mo.plungerModel(); m.position.set(0, -0.35, 0); m.rotation.x = 0.4; g.add(m); break; }
   }
   return g;
 }

@@ -5,13 +5,14 @@
 // ---------------------------------------------------------------------------
 import { MENU, DRINKS, STATIONS, SOURCES, RECIPES, DRINK_TUNING as DT, TUNING as T } from './data.js';
 import { custById, receiptById, tableById, ticketById, isNoisy, registerUp } from './sim.js';
+import { seatsOf, drinkText } from './party.js';
 import { curStep, isDone, isMenuItem, foodName, thingName, stationOptions, canPlaceAt, placeLabel, drinkOf, drinkName, orderItemText, zoneAt } from './kitchen.js';
 
 const A = (label, a, disabled = false, why = '') => ({ label, a, disabled, why });
 const handsFull = (P) => (P.held ? `Hands full: ${thingName(P.held).toLowerCase()} (G to drop)` : '');
 
 const KITCHEN = new Set(['kmop', 'tv', 'printer', 'rail', 'griddle', 'fryer', 'toaster', 'blender', 'prep', 'rack', 'sink', 'ktrash', 'ext', 'breaker', 'receipt', 'freezer', 'fridge', 'breadbox']);
-const DINING = new Set(['dmop', 'cust', 'table', 'coffee', 'soda', 'cups', 'mugs', 'ice', 'lids', 'ftrash', 'jukebox', 'register', 'payreg', 'tents', 'menuboard']);
+const DINING = new Set(['toilet', 'plunger', 'dmop', 'cust', 'table', 'coffee', 'soda', 'cups', 'mugs', 'ice', 'lids', 'ftrash', 'jukebox', 'register', 'payreg', 'tents', 'menuboard']);
 const BOTH = new Set(['tray', 'dishret', 'bell']);
 const ANY = new Set(['puddle', 'floor']);   // whichever side of the wall they're on
 
@@ -29,6 +30,11 @@ export function canTouch(role, key) {
   if (z === 'any') return true;
   if (z === 'pass') return key.split(':')[0] !== 'bell' || role === 'cook';
   return (role === 'cook' && z === 'kitchen') || (role === 'server' && z === 'dining');
+}
+// the smallest free table that seats the whole party
+export function freeTableFor(s, size) {
+  const fits = s.tents.map((n) => ({ n, seats: seatsOf(n).length })).filter((t) => t.seats >= size).sort((a, b) => a.seats - b.seats || a.n - b.n);
+  return fits.length ? fits[0].n : null;
 }
 const mySide = (role, z, x) => (role === 'cook') === (zoneAt(z, x) === 'kitchen');
 
@@ -230,6 +236,18 @@ export function getMenu(s, role, key) {
       else actions.push(A('Take the mop', { type: 'takeMop', where }, !!h || !s.mops[where]));
       break;
     }
+    case 'toilet': {
+      title = 'Toilet';
+      const room = s.rooms[id];
+      actions.push(A('🪠 Plunge', { type: 'plunge', i: id }, !(h?.type === 'plunger' && room?.clog > 0)));
+      break;
+    }
+    case 'plunger': {
+      title = 'Plunger';
+      if (h?.type === 'plunger') actions.push(A('Hang it back up', { type: 'returnPlunger' }, s.plungerHome));
+      else actions.push(A('🪠 Take the plunger', { type: 'takePlunger' }, !!h || !s.plungerHome));
+      break;
+    }
     case 'bell': title = 'Order bell'; actions.push(A('🔔 Ring the bell', { type: 'bell' })); break;
 
     // ---------------------------- either side ----------------------------
@@ -260,25 +278,27 @@ export function getMenu(s, role, key) {
         actions.push(A('💬 Talk', { type: 'talk', cid: c.id }));
         break;
       }
+      const l = c.leader ? custById(s, c.leader) : c;
+      const size = 1 + (l?.members?.length || 0);
       const mood = { ok: '🙂 Fine', impatient: '😒 Impatient', angry: '😠 Angry', furious: '🤬 FURIOUS' }[c.stage];
       const st = {
         enter: 'Walking in', line: front ? 'Ready to order' : `In line (#${s.orderLine.indexOf(c.id) + 1})`,
-        waitDrink: 'Waiting', toTable: 'Heading to a table', waitFood: 'Waiting for food',
+        waitDrink: 'Waiting', toTable: 'Heading to a table', waitFood: 'Waiting for food', seated: 'Sitting',
         eating: 'Eating', toPay: 'Heading to pay', pay: s.payLine[0] === c.id ? 'Ready to pay' : 'In the pay line',
-        inspect: '',
+        tag: '', outing: c.outing?.kind === 'restroom' ? 'In the restroom' : 'Wandering', inspect: '',
       }[c.st] || '';
-      info.push(`${st} · ${mood}`);
+      info.push([st, c.leader ? `with ${l?.name}` : size > 1 ? `party of ${size}` : '', mood].filter(Boolean).join(' · '));
       if (c.st === 'line' && front) {
         actions.push(A('📝 Take order', { type: 'takeOrder', cid: c.id }));
-        actions.push(A('🧾 Ring it up', { type: 'ringUp', cid: c.id }, !c.heard || !registerUp(s) || !s.tents.length,
-          !c.heard ? 'Take their order first' : !registerUp(s) ? 'Register is dead!' : 'No free number tents. Clear a table'));
+        actions.push(A('🧾 Ring it up', { type: 'ringUp', cid: c.id }, !c.heard || !registerUp(s) || freeTableFor(s, size) == null));
       }
-      if (c.st === 'waitDrink') {
+      if (l?.st === 'waitDrink') {
         const d = drinkOf(h);
-        actions.push(A(d ? `🥤 Give ${drinkName(h).toLowerCase()}` : `🥤 Give ${c.order.drink}`, { type: 'giveDrink', cid: c.id }, !d, `Make a ${c.order.drink} first`));
+        actions.push(A(d ? `🥤 Give ${drinkName(h).toLowerCase()}` : '🥤 Give drink', { type: 'giveDrink', cid: c.id }, !d));
       }
-      if (c.st === 'waitFood' && h?.type === 'tray') actions.push(A(`🍽️ Serve tray to table ${c.table}`, { type: 'serve', n: c.table }));
-      if (c.st === 'pay' && s.payLine[0] === c.id) actions.push(A('💵 Take payment', { type: 'takePay', cid: c.id }, !registerUp(s), 'Register is dead!'));
+      const waiting = l && (l.st === 'waitFood' || (l.st === 'outing' && l.outing?.prev === 'waitFood'));
+      if (waiting && h?.type === 'tray') actions.push(A('🍽️ Serve tray', { type: 'serve', n: l.table }));
+      if (c.st === 'pay' && s.payLine[0] === c.id) actions.push(A('💵 Take payment', { type: 'takePay', cid: c.id }, !registerUp(s)));
       actions.push(A('💬 Talk', { type: 'talk', cid: c.id }));
       break;
     }
@@ -374,7 +394,8 @@ export function receiptText(s, rid) {
     lines.push({ text: smudge(main, i + 1), sub: false });
     if (it.toppings) lines.push({ text: smudge(it.toppings.length ? '+ ' + it.toppings.join(', ').toUpperCase() : 'PLAIN (NO TOPPINGS)', i + 20), sub: true });
   });
-  if (tk.drink) lines.push({ text: smudge(`(${DRINKS[tk.drink].name.toUpperCase()} - FOH)`, 50), sub: true });
+  if (tk.drinks?.length) lines.push({ text: smudge(`(${drinkText(tk.drinks).toUpperCase()} - FOH)`, 50), sub: true });
+  if (tk.size > 1) lines.unshift({ text: smudge(`PARTY OF ${tk.size}`, 60), sub: true });
   return {
     no: tk.id, table: tableHidden || g > 0.85 ? '▓' : String(tk.table), lines, grime: g,
     state: g > 0.85 ? 'ruined' : g > 0.3 ? 'smudged' : g > 0.05 ? 'greasy' : 'clean',

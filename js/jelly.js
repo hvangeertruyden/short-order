@@ -48,12 +48,13 @@ function parts(x, y, z) {
          ellip(x, y, z, s * (HAND.x - 0.075), HAND.y + 0.02, -0.06, 0.04, 0.06, 0.04), 0.03), 0.05);  // mitten + thumb
   const leg = (s) => seg(x, y, z, s * HIP_X, LEG_Y + 0.05, 0, s * ANKLE.x, 0.15, 0, 0.125, 0.115);
   const foot = (s) => ellip(x, y, z, s * (HIP_X + 0.015), 0.07, -0.05, 0.15, 0.075, 0.2);           // big flat foot
-  return { spine: torso, head, armL: arm(-1), armR: arm(1), legL: leg(-1), legR: leg(1), footL: foot(-1), footR: foot(1) };
+  void arm;
+  // arms are separate meshes on the arm bones (see jellyPerson), so nothing stretches between arm and body
+  return { spine: torso, head, armL: 99, armR: 99, legL: leg(-1), legR: leg(1), footL: foot(-1), footR: foot(1) };
 }
 function bodySDF(x, y, z) {
   const p = parts(x, y, z);
   let d = smin(p.spine, p.head, 0.07);          // soft neck crease
-  d = smin(d, p.armL, 0.045); d = smin(d, p.armR, 0.045);
   d = smin(d, smin(p.legL, p.footL, 0.05), 0.07); d = smin(d, smin(p.legR, p.footR, 0.05), 0.07);
   return d;
 }
@@ -64,7 +65,7 @@ const HIT_GEO = new THREE.CapsuleGeometry(0.36, 0.95, 2, 8);
 const HIT_MAT = new THREE.MeshBasicMaterial({ visible: false });
 HIT_GEO.userData.shared = true; HIT_MAT.userData.shared = true;
 function buildBase() {
-  const RES = 64, H = 0.86, CY = 0.8;             // grid covers x,z ±0.86 and y -0.06..1.66
+  const RES = 68, H = 0.92, CY = 0.86;            // grid covers x,z ±0.92 and y -0.06..1.78 (head top is ~1.66)
   const mc = new MarchingCubes(RES, new THREE.MeshBasicMaterial(), false, false, 120000);
   const f = mc.field;
   for (let k = 0; k < RES; k++) for (let j = 0; j < RES; j++) for (let i = 0; i < RES; i++) {
@@ -136,6 +137,19 @@ export function jellyPerson({ color, hat = null, kind = 'customer', role = null,
   const mat = clay(color);
   const body = new THREE.SkinnedMesh(BASE, mat);
   body.add(root);
+  for (const [bone, side] of [[armL, -1], [armR, 1]]) {
+    const arm = new THREE.Group(); bone.add(arm);
+    const v = new THREE.Vector3(side * (HAND.x - SHOULDER.x), HAND.y - SHOULDER.y, -0.01);
+    const len = v.length();
+    const sleeve = new THREE.Mesh(new THREE.CapsuleGeometry(0.088, len - 0.1, 8, 16), mat);
+    sleeve.position.copy(v).multiplyScalar(0.5).add(new THREE.Vector3(-side * 0.03, 0.04, 0));
+    sleeve.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v.clone().normalize());
+    arm.add(sleeve);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), mat); hand.scale.set(0.1, 0.122, 0.1); hand.position.copy(v); arm.add(hand);
+    const thumb = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 9), mat); thumb.scale.set(0.042, 0.06, 0.042);
+    thumb.position.copy(v).add(new THREE.Vector3(-side * 0.07, 0.03, -0.055)); arm.add(thumb);
+    for (const m of [sleeve, hand, thumb]) { m.castShadow = true; m.raycast = () => {}; }
+  }
   body.bind(new THREE.Skeleton([root, spine, head, armL, armR, legL, legR, footL, footR]));
   body.frustumCulled = false;
   body.raycast = () => {};            // CPU-skinning every vertex for hover tests is far too slow
