@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Short Order</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Fredoka:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    { "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    } }
+  </script>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <div id="game"></div>
+  <div id="labels"></div>
+
+  <!-- ===================== HUD ===================== -->
+  <div id="hud" class="hidden">
+    <div id="hud-tl">
+      <div id="role-badge"></div>
+      <div id="clock"></div>
+      <div id="till"></div>
+    </div>
+    <div id="noise" class="hidden"></div>
+    <div id="toasts"></div>
+    <div id="busy" class="hidden"><div class="lbl"></div><div class="bar"><i></i></div></div>
+    <div id="held"></div>
+    <div id="menu" class="hidden">
+      <div class="m-title"></div>
+      <div class="m-info"></div>
+      <div class="m-actions"></div>
+    </div>
+    <div id="receipt-view" class="hidden"></div>
+    <div id="receipt-held" class="hidden"></div>
+
+    <div id="staff-chat">
+      <div class="sc-head">STAFF CHAT <span class="kbd">Enter</span></div>
+      <div class="sc-log"></div>
+      <input class="sc-input" maxlength="200" placeholder="Press Enter to talk to your partner" autocomplete="off">
+    </div>
+
+    <div id="npc" class="hidden">
+      <div class="npc-head"><span class="npc-name"></span><button class="npc-close" title="Close (Esc)">✕</button></div>
+      <div class="npc-log"></div>
+      <div class="npc-quick"></div>
+      <input class="npc-input" maxlength="160" placeholder="Press T to type to the customer" autocomplete="off">
+    </div>
+
+    <div id="solo-tip" class="hidden">SOLO PRACTICE · <span class="kbd">Tab</span> swap between cook &amp; server</div>
+    <div id="help-tip"><span class="kbd">H</span> help</div>
+    <button id="end-shift" class="btn ghost hidden">End practice</button>
+    <div id="vignette"></div>
+  </div>
+
+  <div id="help" class="hidden overlay">
+    <div class="card">
+      <h2>How to work a shift</h2>
+      <div class="cols">
+        <div>
+          <h3>Controls</h3>
+          <p><span class="kbd">W A S D</span> walk</p>
+          <p><span class="kbd">Drag</span> (hold mouse &amp; drag) to look around · or <span class="kbd">Q</span> <span class="kbd">E</span></p>
+          <p><span class="kbd">Hover</span> things to see what you can do · <span class="kbd">Click</span> or <span class="kbd">1</span>–<span class="kbd">6</span> to do it</p>
+          <p><span class="kbd">G</span> drop whatever you're holding (pick it back up off the floor)</p>
+          <p><span class="kbd">Enter</span> staff chat · <span class="kbd">T</span> type to a customer · <span class="kbd">Esc</span> close</p>
+          <p><span class="kbd">M</span> mute everything · <span class="kbd">N</span> music on/off</p>
+        </div>
+        <div>
+          <h3>The loop</h3>
+          <p><b>Server:</b> take the order at the counter → ring it up (they get a number tent) → make their drink (soda: cup → ice → fill → lid; coffee: mug → brew) → deliver the tray to the table on the receipt → take payment → clear the table → drop dishes at the pass.</p>
+          <p><b>Cook:</b> print tickets from the TV → grab the receipt → take ingredients from the fridge, freezer &amp; bread box → cook them step by step (flip! stir! lift!) → finish at the prep counter → plate on the pass with the receipt → ring the bell → wash dishes.</p>
+          <p>Dirty plates make people sick. Noise means nobody can hear the server. <b>Talk to each other.</b></p>
+        </div>
+      </div>
+      <button class="btn" data-close>Got it</button>
+    </div>
+  </div>
+
+  <div id="pantry" class="hidden">
+    <div class="pt-inner">
+      <div class="pt-head"><div class="pt-title">Fridge</div><button class="pt-close btn ghost">Close <span class="kbd">Esc</span></button></div>
+      <div class="pt-note"></div>
+      <div class="pt-grid"></div>
+    </div>
+  </div>
+
+  <!-- ===================== LOBBY ===================== -->
+  <div id="lobby" class="overlay">
+    <div class="lobby-card">
+      <div class="logo"><span>SHORT</span><span>ORDER</span></div>
+      <div class="tag">One cooks. One serves. Neither can fix the other's mess.</div>
+
+      <div id="lobby-main">
+        <div class="field">
+          <label>Shift length</label>
+          <div class="seg" id="len-seg">
+            <button data-len="180">3 min</button><button data-len="300" class="on">5 min</button><button data-len="600">10 min</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Your role (host)</label>
+          <div class="seg" id="role-seg">
+            <button data-role="cook" class="on">🍳 Cook</button><button data-role="server">🧾 Server</button>
+          </div>
+        </div>
+        <div class="btns">
+          <button class="btn big" id="btn-host">Host a shift</button>
+          <div class="join-row"><input id="join-code" maxlength="4" placeholder="CODE"><button class="btn" id="btn-join">Join</button></div>
+          <button class="btn ghost" id="btn-solo">Practice solo</button>
+        </div>
+      </div>
+
+      <div id="lobby-wait" class="hidden">
+        <div class="code-lbl">Room code</div>
+        <div class="code" id="room-code">····</div>
+        <div class="share">Send your friend this link: <input id="share-link" readonly></div>
+        <div class="status" id="lobby-status">Waiting for your friend to join…</div>
+        <div class="btns">
+          <button class="btn big" id="btn-start" disabled>Start shift</button>
+          <button class="btn ghost" id="btn-cancel">Back</button>
+        </div>
+      </div>
+
+      <div id="lobby-error" class="error hidden"></div>
+      <div class="bank" id="bank"></div>
+    </div>
+  </div>
+
+  <!-- ===================== SUMMARY ===================== -->
+  <div id="summary" class="overlay hidden">
+    <div class="card summary-card">
+      <h2 id="sum-title">Shift over!</h2>
+      <div id="sum-body"></div>
+      <div class="btns">
+        <button class="btn big" id="btn-next">Next shift (swap roles)</button>
+        <button class="btn ghost" id="btn-menu">Main menu</button>
+      </div>
+      <div class="status" id="sum-status"></div>
+    </div>
+  </div>
+
+  <div id="disconnected" class="overlay hidden">
+    <div class="card"><h2>Connection lost</h2><p id="dc-msg"></p><button class="btn" id="btn-dc">Back to menu</button></div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
