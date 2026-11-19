@@ -10,11 +10,18 @@ Double-click `start.command`, or run:
 
 and open http://localhost:8080.
 
+## Play online
+**https://hvangeertruyden.github.io/short-order/**: hosted on GitHub Pages, updates a minute after each push.
+
+To publish changes:
+
+    python3 deploy.py          # stamps file versions so browsers skip their cache
+    git add -A && git commit -m "what changed" && git push
+
 ## Play with a friend
 1. **Host a shift**: you get a 4-letter room code and a link.
 2. Your friend opens the link (or types the code and clicks **Join**).
-3. Online play over the internet: the game files need to be reachable by your friend, so host the folder
-   on any static host (Cloudflare Pages, Netlify, GitHub Pages). Matchmaking goes through PeerJS's free
+3. Over the internet, just use the GitHub Pages link above. Matchmaking goes through PeerJS's free
    public server, and gameplay runs peer-to-peer.
 On the same Wi-Fi, your friend can open `http://<your-mac-ip>:8080`.
 
