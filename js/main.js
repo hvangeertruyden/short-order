@@ -440,6 +440,7 @@ function step(dt) {
       blender: blending ? (cook ? 0.9 : s.blenderNoise ? 0.5 : 0.08) : 0,
       mop: scrubbing ? 1 : 0,
       wash: myP.busy?.a?.type === 'wash' ? 1 : 0,
+      soda: s.fountain?.pouring && s.power ? (cook ? 0.05 : 0.9) : 0,
     });
     if (s.blenderNoise && s.power && !audio.sampleReady('blender')) loops.blender = cook ? 1 : 0.4;
   }

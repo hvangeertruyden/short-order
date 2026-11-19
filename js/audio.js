@@ -100,6 +100,7 @@ const SAMPLES = {
   menu:     { url: 'sounds/click.mp3', vol: 0.6 },
   mop:      { url: 'sounds/mop.mp3', vol: 0.9 },
   wash:     { url: 'sounds/wash.mp3', vol: 0.9 },
+  soda:     { url: 'sounds/soda.mp3', vol: 0.9 },
 };
 const buffers = {};
 let samplesRequested = false;
@@ -132,7 +133,7 @@ const sampleLoops = {};
 export function updateSampleLoops(active) {
   if (!ctx) return;
   const t = ctx.currentTime;
-  for (const name of ['grill', 'fryer', 'blender', 'mop', 'wash']) {
+  for (const name of ['grill', 'fryer', 'blender', 'mop', 'wash', 'soda']) {
     const want = active[name] || 0;
     let L = sampleLoops[name];
     if (want > 0 && buffers[name]) {
