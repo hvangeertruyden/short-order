@@ -125,7 +125,10 @@ function recipeHint(kind) {
     return st.verb + (st.at === 'prep' ? ' (prep counter)' : '');
   });
 }
+let pantrySrc = null;
+ui.onPantryClose = () => { if (pantrySrc !== 'breadbox') audio.play('fridgeClose'); pantrySrc = null; };
 function openPantry(src) {
+  pantrySrc = src;
   const P = G.state.players[G.role];
   ui.openPantry({
     title: SOURCES[src].name,
@@ -288,6 +291,8 @@ window.addEventListener('keydown', (e) => {
   if (m) { const a = ui.currentActions[Number(m[1]) - 1]; if (a && !a.disabled && a.a) act(a.a); else audio.play('deny'); }
 });
 window.addEventListener('pointerdown', () => audio.unlockAudio());
+// menu-button click for buttons that don't already make a sound through act()
+document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && !b.disabled && !b.closest('#menu, #npc, .pt-card')) audio.play('menu'); });
 
 controls.onClick = () => {
   if (!G.hovered || G.hovered !== G.target?.key || G.far) return;
@@ -407,6 +412,7 @@ function step(dt) {
   heldGroup.position.y = -0.34 + (myP.busy ? Math.sin(time * 18) * 0.02 : 0);
   const moving = Math.hypot(G.me.x - (G.lastMe?.x ?? G.me.x), G.me.z - (G.lastMe?.z ?? G.me.z)) > 0.001;
   G.lastMe = { x: G.me.x, z: G.me.z };
+  G.movedRecently = moving ? 0.25 : Math.max(0, (G.movedRecently || 0) - dt);
   heldGroup.rotation.z = myP.held?.type === 'mop' && (moving || myP.busy) ? Math.sin(time * 11) * 0.35 : heldGroup.rotation.z * 0.85;
 
   // sounds
@@ -424,10 +430,16 @@ function step(dt) {
     const frying = s.stations.fryer.some((it) => it?.type === 'food' && it.lowered);
     const bl = s.stations.blender[0];
     const blending = s.power && (s.blenderNoise || (bl?.type === 'food' && RECIPES[bl.kind]?.steps[bl.step]?.cook && RECIPES[bl.kind].steps[bl.step].at === 'blender'));
+    // scrubbing = holding the mop, moving (or clicking Mop), with a puddle under the mop head
+    const hx = G.me.x - Math.sin(G.me.yaw) * 0.6, hz = G.me.z - Math.cos(G.me.yaw) * 0.6;
+    const onPuddle = s.puddles.some((p) => Math.hypot(hx - p.x, hz - p.z) < 0.45 * (p.size ?? 1) + 0.35);
+    const scrubbing = myP.held?.type === 'mop' && onPuddle && (G.movedRecently > 0 || myP.busy?.a?.type === 'mop');
     audio.updateSampleLoops({
       grill: onGriddle ? (cook ? Math.min(1, 0.5 + onGriddle * 0.15) : 0.08) : 0,
       fryer: frying ? (cook ? 0.75 : 0.06) : 0,
       blender: blending ? (cook ? 0.9 : s.blenderNoise ? 0.5 : 0.08) : 0,
+      mop: scrubbing ? 1 : 0,
+      wash: myP.busy?.a?.type === 'wash' ? 1 : 0,
     });
     if (s.blenderNoise && s.power && !audio.sampleReady('blender')) loops.blender = cook ? 1 : 0.4;
   }

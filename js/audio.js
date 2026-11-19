@@ -77,6 +77,7 @@ const SFX = {
   door: () => { tone({ f: 220, f2: 180, type: 'triangle', dur: 0.08, vol: 0.15 }); noise({ dur: 0.08, vol: 0.12, lp: 900, delay: 0.05 }); },
   beep: () => tone({ f: 1500, type: 'square', dur: 0.06, vol: 0.08 }),
   toastPop: () => { tone({ f: 900, f2: 300, type: 'triangle', dur: 0.08, vol: 0.2 }); noise({ dur: 0.06, vol: 0.15, hp: 1500 }); },
+  fridgeClose: () => { tone({ f: 120, f2: 70, type: 'sine', dur: 0.2, vol: 0.25 }); noise({ dur: 0.08, vol: 0.12, lp: 900 }); },
   pop: () => tone({ f: 660, f2: 990, type: 'sine', dur: 0.08, vol: 0.15 }),
   hover: () => tone({ f: 1800, type: 'sine', dur: 0.03, vol: 0.03 }),
   menu: () => tone({ f: 1200, type: 'triangle', dur: 0.05, vol: 0.08 }),
@@ -95,6 +96,10 @@ const SAMPLES = {
   grill:    { url: 'sounds/grill.mp3', vol: 1.0 },
   fryer:    { url: 'sounds/fryer.mp3', vol: 1.0 },
   blender:  { url: 'sounds/blender.mp3', vol: 1.0 },
+  fridgeClose: { url: 'sounds/fridge-close.mp3', vol: 0.9 },
+  menu:     { url: 'sounds/click.mp3', vol: 0.6 },
+  mop:      { url: 'sounds/mop.mp3', vol: 0.9 },
+  wash:     { url: 'sounds/wash.mp3', vol: 0.9 },
 };
 const buffers = {};
 let samplesRequested = false;
@@ -127,7 +132,7 @@ const sampleLoops = {};
 export function updateSampleLoops(active) {
   if (!ctx) return;
   const t = ctx.currentTime;
-  for (const name of ['grill', 'fryer', 'blender']) {
+  for (const name of ['grill', 'fryer', 'blender', 'mop', 'wash']) {
     const want = active[name] || 0;
     let L = sampleLoops[name];
     if (want > 0 && buffers[name]) {

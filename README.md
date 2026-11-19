@@ -45,5 +45,5 @@ Enter = staff chat · T = type to a customer · Esc = close · H = help · M = m
 
 ## Sound credits
 Sound effects in `sounds/` are from the Pixabay / Freesound community: bell, deep fryer, bacon (griddle sizzle),
-toaster pop, blender, fridge open (freesound_community) and beep (musheran). Background music streams from
+toaster pop, blender, fridge open + close, mopping, washing dishes (freesound_community), beep (musheran) and button click (universfield). Background music streams from
 archive.org (no license listed; replace before any real release).

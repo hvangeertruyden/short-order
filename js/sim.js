@@ -167,7 +167,6 @@ export class Sim {
     const s = this.s;
     if (p.size == null) p.size = p.kind === 'sick' ? 1.3 : 1;
     p.size -= amount;
-    if (Math.random() < 0.15 + amount) this.sound('splash', role === 'cook' ? 'kitchen' : 'dining');
     if (p.size <= 0.1) s.puddles = s.puddles.filter((x) => x !== p);
   }
 

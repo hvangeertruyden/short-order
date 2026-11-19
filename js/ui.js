@@ -53,7 +53,7 @@ export class UI {
     el.classList.remove('hidden');
   }
   takeFromPantry(i) { const it = this.pantryItems?.[i]; if (!it || this.pantryHeld) return; this.pantryTake(it.kind); this.closePantry(); }
-  closePantry() { $('#pantry').classList.add('hidden'); this.pantryOpen = false; }
+  closePantry() { if (!this.pantryOpen) return; $('#pantry').classList.add('hidden'); this.pantryOpen = false; this.onPantryClose?.(); }
   pantryKey(e) {
     if (e.code === 'Escape' || e.code === 'KeyE' && false) { this.closePantry(); return; }
     const m = /^Digit([1-9])$/.exec(e.code); if (m) this.takeFromPantry(Number(m[1]) - 1);
