@@ -369,7 +369,7 @@ export const LINES = {
   lowFill: ['Half a cup? Seriously?'],
   noLid: ['No lid? No straw? Am I a dog?'],
   happy: ['Mmm! Perfect!', 'Now THAT is a meal!', 'Chef\'s kiss!', 'Delicious!'],
-  wrongDrink: ['We didn't order a {drink}!', 'That is NOT what we ordered.'],
+  wrongDrink: ['We didn\'t order a {drink}!', 'That is NOT what we ordered.'],
   partyOrder: ["We'll have {items}{drink}.", "Okay gang... {items}{drink}!", "For the table: {items}{drink}.", "Uhh... {items}{drink}. Everyone good? Good."],
   restroomEw: ["EW! IT'S FLOODED!", 'WHO DID THIS?!', "I'm not going in THERE.", '*squelch*'],
   restroomOops: ['Oops...', '...', '*whistles innocently*'],
