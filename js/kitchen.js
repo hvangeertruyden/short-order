@@ -181,7 +181,7 @@ export function installKitchen(Sim) {
           if (it.p >= 1) { it.over = 0; this.sound('ding', 'kitchen'); }
         } else {
           it.over += dt;
-          if (st.toaster && it.over >= it.popAt) { it.popped = true; this.sound('click', 'kitchen'); }
+          if (st.toaster && it.over >= it.popAt) { it.popped = true; this.sound('toastPop', 'kitchen'); }
           if (it.over > st.win * T.burnGrace && !it.q.burnt && !st.runaway) {
             it.q.burnt = true;
             this.sound('sizzle', 'kitchen');

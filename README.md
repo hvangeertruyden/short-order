@@ -42,3 +42,8 @@ Enter = staff chat · T = type to a customer · Esc = close · H = help · M = m
 - `js/world.js`: low-poly 3D diner and models
 - `js/ui.js`, `css/style.css`: HUD, receipts, chats, summary
 - `js/net.js`: PeerJS networking · `js/audio.js`: synthesized sounds
+
+## Sound credits
+Sound effects in `sounds/` are from the Pixabay / Freesound community: bell, deep fryer, bacon (griddle sizzle),
+toaster pop, blender, fridge open (freesound_community) and beep (musheran). Background music streams from
+archive.org (no license listed; replace before any real release).

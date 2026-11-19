@@ -16,6 +16,8 @@ import { Net } from './net.js';
 import * as audio from './audio.js';
 
 const RANGE = 2.5;
+// things with buttons: interacting with them goes *beep*
+const APPLIANCES = new Set(['tv', 'printer', 'toaster', 'blender', 'fryer', 'coffee', 'soda', 'register', 'payreg']);
 const SEND_INTERVAL = 1 / 15;
 const $ = (s) => document.querySelector(s);
 const other = (r) => (r === 'cook' ? 'server' : 'cook');
@@ -76,7 +78,8 @@ ui.onShake = () => { if (G.role === 'server') G.shake = 0.35; };
 
 function act(a) {
   if (!a || !G.state) return;
-  audio.play('menu');
+  const k = G.target?.key?.split(':')[0];
+  audio.play(APPLIANCES.has(k) && a.type !== 'openSource' ? 'beep' : 'menu');
   if (a.type === 'openSource') { openPantry(a.src); return; }
   if (G.mode === 'guest') G.net?.send({ k: 'act', a });
   else G.sim.apply(G.role, a);
@@ -128,9 +131,9 @@ function openPantry(src) {
     title: SOURCES[src].name,
     held: !!P.held,
     items: SOURCES[src].items.map(([kind, name]) => ({ kind, name, img: thumbnail(kind), steps: recipeHint(kind) })),
-    onTake: (kind) => { act({ type: 'takeIngredient', src, kind }); audio.play(src === 'breadbox' ? 'paper' : 'fridge'); },
+    onTake: (kind) => { act({ type: 'takeIngredient', src, kind }); },
   });
-  audio.play('fridge');
+  audio.play(src === 'breadbox' ? 'paper' : 'fridge');
 }
 
 // ---- lobby -----------------------------------------------------------------
@@ -415,7 +418,19 @@ function step(dt) {
   }
   const loops = {};
   if (s.alarm) loops.alarm = 1;
-  if (s.blenderNoise && s.power) loops.blender = G.role === 'cook' ? 1 : 0.4;
+  {
+    const cook = G.role === 'cook';
+    const onGriddle = s.stations.griddle.filter((it) => it?.type === 'food').length;
+    const frying = s.stations.fryer.some((it) => it?.type === 'food' && it.lowered);
+    const bl = s.stations.blender[0];
+    const blending = s.power && (s.blenderNoise || (bl?.type === 'food' && RECIPES[bl.kind]?.steps[bl.step]?.cook && RECIPES[bl.kind].steps[bl.step].at === 'blender'));
+    audio.updateSampleLoops({
+      grill: onGriddle ? (cook ? Math.min(1, 0.5 + onGriddle * 0.15) : 0.08) : 0,
+      fryer: frying ? (cook ? 0.75 : 0.06) : 0,
+      blender: blending ? (cook ? 0.9 : s.blenderNoise ? 0.5 : 0.08) : 0,
+    });
+    if (s.blenderNoise && s.power && !audio.sampleReady('blender')) loops.blender = cook ? 1 : 0.4;
+  }
   // the diner radio; the old synth jukebox only plays if the stream can't load
   audio.updateMusic({ url: MUSIC.url, length: MUSIC.length, playing: s.phase === 'playing', inKitchen: G.role === 'cook', blast: s.jukebox && s.power, power: s.power, syncTime: s.musicSeed + s.t, vol: MUSIC, skipEvery: MUSIC.skipEvery });
   if (s.jukebox && s.power && !audio.musicWorking()) loops.jukebox = G.role === 'server' ? 1 : 0.35;

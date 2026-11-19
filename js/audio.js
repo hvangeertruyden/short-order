@@ -8,6 +8,7 @@ export function unlockAudio() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     master = ctx.createGain(); master.gain.value = 0.35; master.connect(ctx.destination);
   } catch { ctx = null; }
+  loadSamples();
 }
 
 export function setVolume(v) { if (master) master.gain.value = v; }
@@ -74,15 +75,76 @@ const SFX = {
   plunge: () => { tone({ f: 140, f2: 60, type: 'sine', dur: 0.18, vol: 0.4 }); tone({ f: 420, f2: 900, type: 'sine', dur: 0.12, vol: 0.18, delay: 0.16 }); },
   flush: () => { noise({ dur: 1.1, vol: 0.28, hp: 300, lp: 2500 }); tone({ f: 500, f2: 160, type: 'sine', dur: 1.0, vol: 0.12 }); },
   door: () => { tone({ f: 220, f2: 180, type: 'triangle', dur: 0.08, vol: 0.15 }); noise({ dur: 0.08, vol: 0.12, lp: 900, delay: 0.05 }); },
+  beep: () => tone({ f: 1500, type: 'square', dur: 0.06, vol: 0.08 }),
+  toastPop: () => { tone({ f: 900, f2: 300, type: 'triangle', dur: 0.08, vol: 0.2 }); noise({ dur: 0.06, vol: 0.15, hp: 1500 }); },
   pop: () => tone({ f: 660, f2: 990, type: 'sine', dur: 0.08, vol: 0.15 }),
   hover: () => tone({ f: 1800, type: 'sine', dur: 0.03, vol: 0.03 }),
   menu: () => tone({ f: 1200, type: 'triangle', dur: 0.05, vol: 0.08 }),
   deny: () => tone({ f: 180, type: 'square', dur: 0.12, vol: 0.1 }),
 };
 
+// ---- recorded sound effects (sounds/*.mp3) ----------------------------------
+// One-shots replace the synth version of the same name once loaded; the three
+// loops run while the appliance is working. If a file can't load, the old
+// synthesized sound plays instead.
+const SAMPLES = {
+  bell:     { url: 'sounds/bell.mp3', vol: 0.9 },
+  beep:     { url: 'sounds/beep.mp3', vol: 0.55 },
+  toastPop: { url: 'sounds/toaster-pop.mp3', vol: 1.0 },
+  fridge:   { url: 'sounds/fridge-open.mp3', vol: 0.9 },
+  grill:    { url: 'sounds/grill.mp3', vol: 1.0 },
+  fryer:    { url: 'sounds/fryer.mp3', vol: 1.0 },
+  blender:  { url: 'sounds/blender.mp3', vol: 1.0 },
+};
+const buffers = {};
+let samplesRequested = false;
+function loadSamples() {
+  if (samplesRequested || !ctx) return;
+  samplesRequested = true;
+  for (const [name, def] of Object.entries(SAMPLES)) {
+    fetch(def.url).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b)).then((buf) => { buffers[name] = buf; }).catch(() => {});
+  }
+}
+export const sampleReady = (name) => !!buffers[name];
+function playSample(name, vol) {
+  const buf = buffers[name];
+  if (!buf) return false;
+  const src = ctx.createBufferSource(), g = ctx.createGain();
+  src.buffer = buf; g.gain.value = SAMPLES[name].vol * vol;
+  src.connect(g); g.connect(master); src.start();
+  return true;
+}
+
 export function play(name, vol = 1) {
-  if (!ctx || !SFX[name]) return;
+  if (!ctx) return;
+  if (SAMPLES[name] && playSample(name, vol)) return;
+  if (!SFX[name]) return;
   vmul = vol; SFX[name](); vmul = 1;
+}
+
+// appliance loops: active = { grill: volume, fryer: volume, blender: volume }
+const sampleLoops = {};
+export function updateSampleLoops(active) {
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  for (const name of ['grill', 'fryer', 'blender']) {
+    const want = active[name] || 0;
+    let L = sampleLoops[name];
+    if (want > 0 && buffers[name]) {
+      if (!L) {
+        const src = ctx.createBufferSource(), g = ctx.createGain();
+        src.buffer = buffers[name]; src.loop = true; g.gain.value = 0;
+        src.connect(g); g.connect(master);
+        src.start(0, Math.random() * buffers[name].duration);   // start somewhere random so it never sounds identical
+        L = sampleLoops[name] = { src, g };
+      }
+      L.g.gain.setTargetAtTime(want * SAMPLES[name].vol, t, 0.12);
+    } else if (L) {
+      L.g.gain.setTargetAtTime(0, t, 0.08);
+      const dead = L; delete sampleLoops[name];
+      setTimeout(() => { try { dead.src.stop(); } catch {} }, 500);
+    }
+  }
 }
 
 // Continuous noise-event loops. Called every frame with which ones are on.
