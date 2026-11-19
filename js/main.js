@@ -138,7 +138,7 @@ function openPantry(src) {
   ui.openPantry({
     title: SOURCES[src].name,
     held: !!P.held,
-    items: SOURCES[src].items.map(([kind, name]) => ({ kind, name, img: thumbnail(kind), steps: recipeHint(kind) })),
+    items: SOURCES[src].items.map(([kind, name]) => ({ kind, name, img: thumbnail(kind), steps: recipeHint(kind), out: !!G.state.inc?.out?.[kind] })),
     onTake: (kind) => { act({ type: 'takeIngredient', src, kind }); },
   });
   audio.play(src === 'breadbox' ? 'paper' : 'fridge');
@@ -357,7 +357,8 @@ function step(dt) {
   let s = G.state;
   const playing = s.phase === 'playing';
   const P = s.players[G.role];
-  const frozen = isTyping() || !!P.busy || !playing || !$('#help').classList.contains('hidden') || ui.pantryOpen;
+  const slipping = P.slipUntil && s.t < P.slipUntil;
+  const frozen = isTyping() || !!P.busy || !playing || !$('#help').classList.contains('hidden') || ui.pantryOpen || slipping;
   controls.update(dt, G.me, frozen);
 
   if (G.mode !== 'guest') {
@@ -378,7 +379,8 @@ function step(dt) {
   G.walkPhase = (G.walkPhase || 0) + (G.movedRecently > 0 ? dt * 9 : 0);
   const bob = G.movedRecently > 0 ? Math.sin(G.walkPhase) * 0.028 : 0;
   camera.position.set(G.me.x + (Math.random() - 0.5) * sh, 1.6 + bob + (Math.random() - 0.5) * sh, G.me.z);
-  camera.rotation.set(controls.pitch, G.me.yaw, 0);
+  const Pm = G.state?.players[G.role], wob = Pm?.slipUntil && G.state.t < Pm.slipUntil ? Math.sin(G.state.t * 22) * 0.12 * (Pm.slipUntil - G.state.t) : 0;
+  camera.rotation.set(controls.pitch - Math.abs(wob) * 0.6, G.me.yaw, wob);
   if (window.__camOverride) { const o = window.__camOverride; camera.position.set(...o.pos); camera.rotation.set(...o.rot); }
 
   world.update(s, G.role, dt, time);

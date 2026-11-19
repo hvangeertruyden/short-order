@@ -42,17 +42,17 @@ export class UI {
     grid.innerHTML = '';
     items.forEach((it, i) => {
       const card = document.createElement('div');
-      card.className = 'pt-card';
-      card.innerHTML = `<div class="pt-img"><img src="${it.img}" alt=""></div><div class="pt-name">${esc(it.name)}</div>`;
+      card.className = 'pt-card' + (it.out ? ' out' : '');
+      card.innerHTML = `<div class="pt-img"><img src="${it.img}" alt="">${it.out ? '<div class="pt-out">EMPTY</div>' : ''}</div><div class="pt-name">${esc(it.name)}</div>`;
       const b = document.createElement('button');
-      b.className = 'btn big'; b.innerHTML = `<span class="n">${i + 1}</span> Take`; b.disabled = held;
+      b.className = 'btn big'; b.innerHTML = `<span class="n">${i + 1}</span> Take`; b.disabled = held || it.out;
       b.addEventListener('click', () => this.takeFromPantry(i));
       card.appendChild(b);
       grid.appendChild(card);
     });
     el.classList.remove('hidden');
   }
-  takeFromPantry(i) { const it = this.pantryItems?.[i]; if (!it || this.pantryHeld) return; this.pantryTake(it.kind); this.closePantry(); }
+  takeFromPantry(i) { const it = this.pantryItems?.[i]; if (!it || this.pantryHeld || it.out) return; this.pantryTake(it.kind); this.closePantry(); }
   closePantry() { if (!this.pantryOpen) return; $('#pantry').classList.add('hidden'); this.pantryOpen = false; this.onPantryClose?.(); }
   pantryKey(e) {
     if (e.code === 'Escape' || e.code === 'KeyE' && false) { this.closePantry(); return; }
@@ -103,6 +103,7 @@ export class UI {
     $('#held').innerHTML = held ? `Holding: ${esc(held)} <span class="kbd">G</span> drop` : '';
     $('#solo-tip').classList.toggle('hidden', !solo);
     $('#vignette').className = s.fire && role === 'cook' ? 'smoke' : !s.power ? 'dark' : '';
+    $('#batter').classList.toggle('hidden', !(role === 'cook' && s.inc?.batterUntil > s.t));
 
     this.renderMenu(menu, far);
     this.renderReceipts(s, role, menu, myRecView);
@@ -203,7 +204,7 @@ export class UI {
     if (!c) { el.classList.add('hidden'); this.npcSig = ''; return; }
     el.classList.remove('hidden');
     const canRing = c.st === 'line' && s.orderLine[0] === c.id;
-    const sig = JSON.stringify([c.id, s.npc.lines.length, canRing, c.heard, !!s.noise.length]);
+    const sig = JSON.stringify([c.id, s.npc.lines.length, canRing, c.heard, !!s.noise.length, (s.npc.choices || []).map((o) => o.id)]);
     if (sig === this.npcSig) return;
     this.npcSig = sig;
     $('.npc-name', el).textContent = (c.kind === 'inspector' ? '📋 ' : '💬 ') + c.name + (c.table ? ` · table ${c.table}` : '');
@@ -216,10 +217,8 @@ export class UI {
     if (canRing) {
       btn(c.heard ? '🧾 Ring it up' : '📝 Take order', () => this.onAction(c.heard ? { type: 'ringUp', cid: c.id } : { type: 'takeOrder', cid: c.id }), true);
     }
-    btn('Sorry for the wait!', () => this.onSay('Sorry for the wait!'));
-    btn('Coming right up!', () => this.onSay('Coming right up!'));
-    btn('What did you order?', () => this.onSay('What did you order again?'));
-    btn('Which table?', () => this.onSay('What table number are you?'));
+    // replies depend on what's going on with this customer (see incidents.js → npcChoices)
+    for (const o of s.npc.choices || []) btn(o.label, () => this.onAction({ type: 'npcChoice', cid: c.id, choice: o.id }), false);
   }
 
   // ------------------------------------------------------------------

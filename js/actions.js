@@ -11,8 +11,8 @@ import { curStep, isDone, isMenuItem, foodName, thingName, stationOptions, canPl
 const A = (label, a, disabled = false, why = '') => ({ label, a, disabled, why });
 const handsFull = (P) => (P.held ? `Hands full: ${thingName(P.held).toLowerCase()} (G to drop)` : '');
 
-const KITCHEN = new Set(['kmop', 'tv', 'printer', 'rail', 'griddle', 'fryer', 'toaster', 'blender', 'prep', 'rack', 'sink', 'ktrash', 'ext', 'breaker', 'receipt', 'freezer', 'fridge', 'breadbox']);
-const DINING = new Set(['toilet', 'plunger', 'dmop', 'cust', 'table', 'coffee', 'soda', 'cups', 'mugs', 'ice', 'lids', 'ftrash', 'jukebox', 'register', 'payreg', 'tents', 'menuboard']);
+const KITCHEN = new Set(['staffmeal', 'poster', 'detector', 'knife', 'kmop', 'tv', 'printer', 'rail', 'griddle', 'fryer', 'toaster', 'blender', 'prep', 'rack', 'sink', 'ktrash', 'ext', 'breaker', 'receipt', 'freezer', 'fridge', 'breadbox']);
+const DINING = new Set(['dog', 'toilet', 'plunger', 'dmop', 'cust', 'table', 'coffee', 'soda', 'cups', 'mugs', 'ice', 'lids', 'ftrash', 'jukebox', 'register', 'payreg', 'tents', 'menuboard']);
 const BOTH = new Set(['tray', 'dishret', 'bell']);
 const ANY = new Set(['puddle', 'floor']);   // whichever side of the wall they're on
 
@@ -59,6 +59,14 @@ function foodStatus(it, at) {
   return lines;
 }
 
+function fireActions(s, P) {
+  const out = [];
+  if (P.held?.type === 'ext') out.push(A('🧯 SPRAY IT!', { type: 'spray' }));
+  else out.push(A('🧯 Spray', null, true));
+  if (s.inc?.extKnownEmpty) out.push(A('🍳 Smother it with a sheet pan', { type: 'smother' }));
+  return out;
+}
+
 // is this food still mid-cook at this station?
 function st0(it, at) { const st = curStep(it); return !!(st?.cook && st.at === at && it.p < (st.toaster ? 0.7 : 1)); }
 
@@ -68,11 +76,9 @@ function stationMenu(s, role, P, at, i) {
   const info = [], actions = [];
   const it = s.stations[at][i];
   const electric = at === 'toaster' || at === 'blender';
-  if (s.fire && s.fire.at === at) {
-    if (P.held?.type === 'ext') actions.push(A('🧯 SPRAY IT!', { type: 'spray' }));
-    else actions.push(A('🧯 Spray', null, true));
-    return { title, info, actions };
-  }
+  if (s.fire && s.fire.at === at) return { title, info, actions: fireActions(s, P) };
+  // a jammed toaster just needs a good whack
+  if (at === 'toaster' && s.inc?.toasterJam && it) actions.push(A('👊 Whack the toaster', { type: 'whackToaster' }));
   const h = P.held;
 
   if (!it) {
@@ -100,6 +106,8 @@ function stationMenu(s, role, P, at, i) {
   }
 
   info.push(...foodStatus(it, at));
+  if ((it.kind === 'pancakes' || it.kind === 'milkshake') && isDone(it) && !it.candle) actions.push(A('🕯️ Stick a candle in it', { type: 'candle', at, i }));
+  if (it.candle) info.push('🕯️ with a candle');
   // combining at the prep counter
   if (at === 'prep' && h?.type === 'food') {
     const kinds = [it.kind, h.kind].sort().join('+');
@@ -159,6 +167,7 @@ export function getMenu(s, role, key) {
     case 'fridge': case 'freezer': case 'breadbox': {
       const src = SOURCES[kind];
       title = src.name;
+      if (kind === 'freezer' && s.inc?.freezerOpenAt != null) { actions.push(A('🚪 Shut the door!', { type: 'shutFreezer' })); break; }
       actions.push(A(kind === 'breadbox' ? '🍞 Open the bread box' : `🚪 Open the ${src.name.toLowerCase()}`, { type: 'openSource', src: kind }));
       break;
     }
@@ -175,7 +184,9 @@ export function getMenu(s, role, key) {
     case 'sink': {
       title = 'Dish sink';
       const canWash = h?.type === 'dishes' || (h?.type === 'plate' && h.dirty && !h.items.length);
-      actions.push(A(h?.type === 'dishes' ? `🧽 Wash ${h.n} plate${h.n > 1 ? 's' : ''}` : '🧽 Wash', { type: 'wash' }, !canWash, 'Bring dirty dishes'));
+      if (s.inc?.sinkClog) actions.push(A('🪠 Clear the drain', { type: 'unclog' }));
+      actions.push(A(h?.type === 'dishes' ? `🧽 Wash ${h.n} plate${h.n > 1 ? 's' : ''}` : '🧽 Wash', { type: 'wash' }, !canWash || s.inc?.sinkClog, 'Bring dirty dishes'));
+      if (s.inc?.batterUntil > s.t) actions.push(A('🧽 Wipe the batter off', { type: 'wipeBatter' }));
       break;
     }
     case 'ktrash': {
@@ -211,6 +222,7 @@ export function getMenu(s, role, key) {
         else if (!tr) actions.push(A('Set plate here', { type: 'trayPut', i: id }, h?.type !== 'plate', 'Hold a plate'));
         else {
           if (h?.type === 'food') actions.push(A('🍽️ Put it on this plate', { type: 'plateFood', at: 'tray', i: id }, !isMenuItem(h) || tr.plate.items.length >= T.plateCapacity, !isMenuItem(h) ? 'Not a finished dish' : 'Plate is full'));
+          if (tr.plate.items.some((f) => (f.kind === 'pancakes' || f.kind === 'milkshake') && !f.candle)) actions.push(A('🕯️ Add a candle', { type: 'candle', at: 'tray', i: id }));
           actions.push(A('🧾 Attach receipt', { type: 'attachReceipt', i: id }, !P.receipt || !!tr.receiptId, tr.receiptId ? 'Already has one' : 'Not holding a receipt'));
           actions.push(A('Take plate back', { type: 'trayTake', i: id }, !!h || (tr.receiptId && !!P.receipt), handsFull(P) || 'Hands full of receipt'));
         }
@@ -248,7 +260,32 @@ export function getMenu(s, role, key) {
       else actions.push(A('🪠 Take the plunger', { type: 'takePlunger' }, !!h || !s.plungerHome));
       break;
     }
-    case 'bell': title = 'Order bell'; actions.push(A('🔔 Ring the bell', { type: 'bell' })); break;
+    case 'bell':
+      title = 'Order bell';
+      if (s.inc?.bellStuck) actions.push(A('🔧 Unstick the bell', { type: 'unstickBell' }));
+      else actions.push(A('🔔 Ring the bell', { type: 'bell' }));
+      break;
+    // ---------------------------- incident things ----------------------------
+    case 'staffmeal':
+      title = 'Your lunch';
+      if (s.fire?.at === 'staff') actions.push(...fireActions(s, P));
+      else if (s.inc?.staffMeal) actions.push(A('🍔 Scarf it down', { type: 'eatStaff' }));
+      break;
+    case 'poster':
+      title = s.inc?.posterBurnt ? 'A charred poster' : '"FIRE SAFETY WEEK" poster';
+      if (s.fire?.at === 'poster') actions.push(...fireActions(s, P));
+      break;
+    case 'detector':
+      title = 'Smoke detector';
+      if (s.inc?.falseAlarm) actions.push(A('🪭 Wave a towel at it', { type: 'fanAlarm' }));
+      break;
+    case 'knife': title = 'Chef\'s knife (on the floor)'; actions.push(A('🔪 Pick up the knife', { type: 'pickKnife' })); break;
+    case 'dog': {
+      title = '🐕 A dog?!';
+      const d = s.inc?.dog;
+      if (d && d.st === 'run') actions.push(A('🐕 Shoo! Out!', { type: 'shooDog' }, Math.hypot(P.x - d.x, P.z - d.z) > 1.8));
+      break;
+    }
 
     // ---------------------------- either side ----------------------------
     case 'floor': {
@@ -273,6 +310,8 @@ export function getMenu(s, role, key) {
       if (!c || c.st === 'leaving') return null;
       title = c.kind === 'inspector' ? '📋 Health Inspector' : c.name;
       const front = s.orderLine[0] === c.id;
+      if (c.kind === 'artist') { title = '🎈 ' + c.name; actions.push(A('💬 Talk', { type: 'talk', cid: c.id })); break; }
+      if (c.st === 'dash') { actions.push(A('🏃 HEY! Stop right there!', { type: 'catchDasher', cid: c.id }, Math.hypot(P.x - c.x, P.z - c.z) > 2.4)); break; }
       if (c.kind === 'inspector') {
         actions.push(A('☕ Offer free coffee', { type: 'giveDrink', cid: c.id }, !(h?.type === 'mug' && h.p >= 0.5) || s.inspector?.lenient, 'Hold a coffee'));
         actions.push(A('💬 Talk', { type: 'talk', cid: c.id }));
@@ -292,6 +331,7 @@ export function getMenu(s, role, key) {
         actions.push(A('📝 Take order', { type: 'takeOrder', cid: c.id }));
         actions.push(A('🧾 Ring it up', { type: 'ringUp', cid: c.id }, !c.heard || !registerUp(s) || freeTableFor(s, size) == null));
       }
+      if (l && l.st !== 'waitDrink' && drinkOf(h) && (l.topic?.kind === 'melt' || l.refills?.want)) actions.push(A(l.refills?.want ? `${l.refills.kind === 'coffee' ? '☕' : '🥤'} Refill` : '🥤 On the house', { type: 'giveDrink', cid: c.id }, l.refills?.want && drinkOf(h) !== l.refills.kind));
       if (l?.st === 'waitDrink') {
         const d = drinkOf(h);
         actions.push(A(d ? `🥤 Give ${drinkName(h).toLowerCase()}` : '🥤 Give drink', { type: 'giveDrink', cid: c.id }, !d));
@@ -307,7 +347,9 @@ export function getMenu(s, role, key) {
       title = `Table ${id}`;
       const c = custById(s, tb.cust);
       if (c) info.push(`${c.name}: ${c.st === 'waitFood' ? 'waiting for food' : c.st === 'eating' ? 'eating' : 'on their way'}`);
+      if (tb.flipped) { actions.push(A('🔧 Set the table back up', { type: 'upright', n: id }, s.puddles.some((p) => p.table === id && p.kind === 'food'))); break; }
       if (h?.type === 'tray') actions.push(A('🍽️ Serve tray here', { type: 'serve', n: id }));
+      if (c?.birthday?.cake && !c.birthday.sung) actions.push(A('🎵 Sing "Happy Birthday"', { type: 'sing', n: id }));
       if (!tb.cust && (tb.dirty || tb.tent)) {
         const canCarry = !h || (h.type === 'dishes' && h.n < T.maxDishesCarried) || !tb.dirty;
         const puddle = s.puddles.some((p) => p.table === id);
@@ -344,6 +386,8 @@ export function getMenu(s, role, key) {
     }
     case 'coffee': {
       title = 'Coffee machine';
+      if (s.inc?.coffee?.phase === 'leak') { actions.push(A('🔌 Unplug it!', { type: 'unplugCoffee' })); break; }
+      if (s.inc?.coffee?.phase === 'cool') { info.push('Cooling down...'); break; }
       const m = s.coffeeM;
       if (!m) actions.push(A('☕ Place mug & brew', { type: 'brew' }, h?.type !== 'mug' || h.p > 0, h?.type === 'mug' ? 'Already full' : 'Hold an empty mug'));
       else {
@@ -364,6 +408,7 @@ export function getMenu(s, role, key) {
     }
     case 'register': case 'payreg': {
       title = kind === 'register' ? 'Order register' : 'Pay register';
+      if (kind === 'register') for (const c of s.customers) if (c.remake && c.table) actions.push(A(`🧾 Re-send table ${c.table}'s order`, { type: 'resend', n: c.table }, !registerUp(s)));
       break;
     }
     case 'tents': {

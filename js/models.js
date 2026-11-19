@@ -110,6 +110,11 @@ const prepDone = (item, verb) => { const r = recipe(item); const i = r.steps.fin
 export const OVERRIDES = {};
 export function itemModel(item) {
   const g = new THREE.Group();
+  if (item.candle) {   // birthday!
+    const top = item.kind === 'milkshake' ? 0.24 : 0.07;
+    cyl(g, 0.006, 0.006, 0.07, paint(0xF4A6B8, 0.4), 0.01, top, 0, 8);
+    const fl = new THREE.Mesh(new THREE.ConeGeometry(0.009, 0.026, 8), new THREE.MeshStandardMaterial({ color: 0xFFD23C, emissive: 0xFFB020, emissiveIntensity: 6 })); fl.position.set(0.01, top + 0.085, 0); g.add(fl);
+  }
   const d = doneness(item);
   const burnt = item.q?.burnt;
   const col = (raw, done) => (burnt ? BURNT : lerpC(raw, done, d));
@@ -751,5 +756,95 @@ export function tpMessModel() { // cartoon toilet-paper streamers on the floor
     const m = tube(g, pts, 0.022, paper, 24); m.scale.y = 0.35; m.castShadow = false;
   }
   const roll = cyl(g, 0.05, 0.05, 0.1, paper, 0.25, 0.05, -0.2, 14); roll.rotation.z = Math.PI / 2; roll.position.y = 0.05;
+  return g;
+}
+
+// ---------------------------------------------------------------------------
+// incident props
+// ---------------------------------------------------------------------------
+export function shardsModel() {   // a smashed plate
+  const g = new THREE.Group();
+  for (let i = 0; i < 9; i++) {
+    const sh = new THREE.Mesh(new THREE.CircleGeometry(0.05 + (i % 3) * 0.025, 3), M.ceramic);
+    sh.rotation.set(-Math.PI / 2, 0, i * 1.7); sh.position.set(Math.cos(i * 2.3) * 0.32 * ((i % 4) / 4 + 0.3), 0.006 + i * 0.0005, Math.sin(i * 2.3) * 0.26 * ((i % 4) / 4 + 0.3));
+    sh.castShadow = false; sh.receiveShadow = true; g.add(sh);
+    if (i % 3 === 0) { const r = torus(null, 0.06, 0.003, paint(C.teal, 0.3), 0, 0, 0, 1.4); r.rotation.set(Math.PI / 2, 0, i); r.position.copy(sh.position).setY(0.01); g.add(r); }
+  }
+  return g;
+}
+export function foodMessModel() {  // whatever was on the table, now on the floor
+  const g = new THREE.Group();
+  const base = cyl(g, 0.42, 0.42, 0.008, paint(0x9A5A2A, 0.2, { transparent: true, opacity: 0.8 }), 0, 0.002, 0, 22); base.scale.set(1.2, 1, 0.7); base.castShadow = false;
+  const bits = [[0xD69A4D, 0.07], [0x7A3B1E, 0.05], [0xF2D16B, 0.04], [0xE33A2A, 0.035], [0x6BA84A, 0.04], [0xF6E7C4, 0.06]];
+  for (let i = 0; i < 12; i++) { const [c, r] = bits[i % bits.length]; sph(g, r, paint(c, 0.6), Math.cos(i * 2.1) * 0.35, 0.02, Math.sin(i * 2.1) * 0.22, 1.4, 0.45, 1, 10); }
+  for (let i = 0; i < 2; i++) { const p = shardsModel(); p.scale.setScalar(0.7); p.position.set(i ? 0.3 : -0.25, 0, i ? -0.1 : 0.15); g.add(p); }
+  return g;
+}
+export function balloonBunch() {   // a balloon dog and two spares on sticks
+  const g = new THREE.Group();
+  const cols = [0xFF4060, 0x40C0FF, 0xFFE040, 0x7CC44E, 0xFF8C42, 0xB06BD6];
+  for (let i = 0; i < 6; i++) {
+    const b = new THREE.Group();
+    const m = paint(cols[i], 0.25, { metalness: 0.05 });
+    sph(b, 0.1, m, 0, 0.62, 0, 0.8, 1.5, 0.8, 14);
+    cyl(b, 0.003, 0.003, 0.5, paint(0xFFFFFF, 0.5), 0, 0.02, 0, 4);
+    b.position.set((i - 2.5) * 0.05, 0, Math.sin(i) * 0.05); b.rotation.z = (i - 2.5) * 0.16;
+    g.add(b);
+  }
+  return g;
+}
+export function dogModel() {       // scruffy little mutt, faces +z
+  const g = new THREE.Group();
+  const fur = paint(0xB07A42, 0.85), dark = paint(0x5A3A1E, 0.8);
+  const body = sph(g, 0.16, fur, 0, 0.32, 0, 0.9, 0.85, 1.5, 16);
+  const head = new THREE.Group(); head.position.set(0, 0.46, 0.26); g.add(head);
+  sph(head, 0.11, fur, 0, 0, 0, 1, 0.95, 1.05, 14);
+  sph(head, 0.055, paint(0xD9A86A, 0.8), 0, -0.03, 0.09, 1, 0.8, 1.2, 10);
+  sph(head, 0.02, M.black, 0, -0.01, 0.15, 1, 1, 1, 8);
+  for (const s of [-1, 1]) { sph(head, 0.018, M.black, s * 0.045, 0.035, 0.085, 1, 1, 1, 8); const ear = sph(head, 0.05, dark, s * 0.085, 0.04, -0.01, 0.5, 1.3, 0.9, 10); ear.rotation.z = s * 0.5; }
+  const tail = new THREE.Group(); tail.position.set(0, 0.4, -0.22); g.add(tail);
+  cyl(tail, 0.018, 0.012, 0.16, fur, 0, 0, 0, 8).rotation.x = -0.7;
+  const legs = [];
+  for (const [x, z] of [[-0.08, 0.14], [0.08, 0.14], [-0.08, -0.14], [0.08, -0.14]]) { const l = new THREE.Group(); l.position.set(x, 0.24, z); cyl(l, 0.028, 0.025, 0.24, fur, 0, -0.24, 0, 8); sph(l, 0.03, dark, 0, -0.23, 0.01, 1, 0.6, 1.3, 8); g.add(l); legs.push(l); }
+  // a red collar
+  const col = torus(null, 0.085, 0.012, paint(0xC8262B, 0.4), 0, 0, 0); col.position.set(0, 0.4, 0.2); col.rotation.x = 1.1; g.add(col);
+  g.userData = { legs, tail, head, body };
+  return g;
+}
+export function knifeModel() {
+  const g = new THREE.Group();
+  const blade = rbox(g, 0.2, 0.004, 0.04, M.chrome, 0.06, 0, 0, 0.001);
+  rbox(g, 0.11, 0.018, 0.026, paint(0x2A1A10, 0.6), -0.1, 0, 0, 0.006);
+  blade.rotation.z = 0;
+  return g;
+}
+export function staffMealModel() { // the cook's burger, forgotten on the warmer
+  const g = new THREE.Group();
+  lathe(g, [[0, 0], [0.11, 0], [0.12, 0.01], [0.15, 0.02], [0.15, 0.025], [0, 0.014]], M.ceramic);
+  sph(g, 0.06, paint(0xD9963F, 0.6), 0, 0.04, 0, 1, 0.45, 1, 14);
+  cyl(g, 0.062, 0.062, 0.022, paint(0x5A2E16, 0.8), 0, 0.045, 0, 16);
+  cyl(g, 0.066, 0.066, 0.004, paint(0xF2B632, 0.4), 0, 0.068, 0, 4);
+  sph(g, 0.06, paint(0xD9963F, 0.6), 0, 0.085, 0, 1, 0.6, 1, 14);
+  for (let i = 0; i < 5; i++) rbox(g, 0.012, 0.012, 0.06, paint(0xF2C94C, 0.5), 0.09 + i * 0.012, 0.02, -0.03 + (i % 2) * 0.03, 0.003).rotation.y = i;
+  return g;
+}
+export function posterModel(burnt) {
+  const g = new THREE.Group();
+  decal(g, 0.42, 0.56, (c, w, h) => {
+    c.fillStyle = burnt ? '#2A221C' : '#F4E9CF'; c.fillRect(0, 0, w, h);
+    if (burnt) { c.fillStyle = '#4A3A2E'; for (let i = 0; i < 40; i++) { c.beginPath(); c.arc(Math.random() * w, Math.random() * h, 8 + Math.random() * 20, 0, 7); c.fill(); } c.fillStyle = '#C8A06A'; c.font = 'bold 26px Bungee'; c.textAlign = 'center'; c.fillText('...TY WEEK', w / 2, h * 0.8); return; }
+    c.fillStyle = '#C8262B'; c.fillRect(0, 0, w, 70);
+    c.fillStyle = '#FFF'; c.font = 'bold 34px Bungee'; c.textAlign = 'center'; c.fillText('FIRE SAFETY', w / 2, 48);
+    c.fillStyle = '#C8262B'; c.font = 'bold 46px Bungee'; c.fillText('WEEK!', w / 2, 120);
+    c.font = '80px serif'; c.fillText('🧯', w / 2, 230);
+    c.fillStyle = '#333'; c.font = 'bold 20px sans-serif'; c.fillText('Keep flammables', w / 2, 290); c.fillText('away from the grill!', w / 2, 316);
+  }, 0, 0, 0.004, 0, 256, 342);
+  rbox(g, 0.44, 0.58, 0.004, paint(0xFFFFFF, 0.8), 0, -0.29, 0, 0.001);
+  return g;
+}
+export function detectorModel(on) {
+  const g = new THREE.Group();
+  cyl(g, 0.075, 0.08, 0.035, paint(0xF2EEE6, 0.6), 0, -0.035, 0, 20);
+  cyl(g, 0.012, 0.012, 0.006, emissive(on ? 0xFF2020 : 0x330808, on ? 4 : 0.2), 0.035, -0.04, 0, 8);
   return g;
 }

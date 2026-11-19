@@ -41,6 +41,15 @@ function noise({ dur = 0.3, vol = 0.4, delay = 0, hp = 400, lp = 8000 }) {
 
 const SFX = {
   ding: () => tone({ f: 1320, type: 'triangle', dur: 0.25, vol: 0.25 }),
+  // incidents
+  bang: () => { noise({ dur: 0.35, vol: 0.9, lp: 3000 }); tone({ f: 60, f2: 30, type: 'sine', dur: 0.4, vol: 0.9 }); },
+  crash: () => { for (let i = 0; i < 5; i++) { tone({ f: 2200 + Math.random() * 1800, type: 'triangle', dur: 0.12, vol: 0.18, delay: i * 0.05 }); } noise({ dur: 0.4, vol: 0.35, hp: 1800, delay: 0.02 }); },
+  bark: () => { tone({ f: 420, f2: 260, type: 'sawtooth', dur: 0.12, vol: 0.35 }); tone({ f: 460, f2: 280, type: 'sawtooth', dur: 0.12, vol: 0.3, delay: 0.2 }); },
+  pfft: () => { noise({ dur: 0.35, vol: 0.12, hp: 1200, lp: 4000 }); tone({ f: 300, f2: 120, type: 'sine', dur: 0.3, vol: 0.1, delay: 0.1 }); },
+  kazoo: () => { [262, 262, 294, 262, 349, 330].forEach((f, i) => tone({ f, type: 'sawtooth', dur: 0.32, vol: 0.12, delay: i * 0.36 })); },
+  squeak: () => { for (let i = 0; i < 3; i++) tone({ f: 900 + i * 220, f2: 1400, type: 'triangle', dur: 0.09, vol: 0.12, delay: i * 0.11 }); },
+  scream: () => tone({ f: 700, f2: 1100, type: 'sawtooth', dur: 0.7, vol: 0.2 }),
+  ding2: () => { tone({ f: 1760, type: 'sine', dur: 0.4, vol: 0.4 }); },
   bell: () => { tone({ f: 1760, type: 'sine', dur: 1.2, vol: 0.5 }); tone({ f: 2640, type: 'sine', dur: 0.8, vol: 0.2 }); },
   print: () => { for (let i = 0; i < 6; i++) tone({ f: 900 + (i % 2) * 300, type: 'square', dur: 0.04, vol: 0.08, delay: i * 0.06 }); },
   tvbeep: () => { tone({ f: 880, type: 'square', dur: 0.08, vol: 0.12 }); tone({ f: 1175, type: 'square', dur: 0.1, vol: 0.12, delay: 0.1 }); },

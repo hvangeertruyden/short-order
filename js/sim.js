@@ -4,6 +4,7 @@
 // ---------------------------------------------------------------------------
 import { MENU, DRINKS, STATIONS, RECIPES, QUALITY_PAY, TUNING as T, L, TABLES, EVENTS, DIRECTOR, LINES } from './data.js';
 import { installParty } from './party.js';
+import { installIncidents, freshInc } from './incidents.js';
 import { installKitchen, orderList, dishIssues, payMultiplier, drinkOf, drinkIssues, isMenuItem } from './kitchen.js';
 
 const RECIPE_OF = (it) => RECIPES[it.kind];
@@ -81,7 +82,7 @@ export function newState({ shiftLen = 600, hostRole = 'cook', solo = false, shif
     customers: [], orderLine: [], payLine: [], puddles: [], floor: [], fountain: null, coffeeM: null,
     fire: null, alarm: false, alarmOffAt: 0, power: true, registerBootUntil: 0, jam: 0,
     jukebox: false, blenderNoise: false, mops: { dining: true, kitchen: true }, plungerHome: true, rooms: [{ occ: null, clog: 0 }, { occ: null, clog: 0 }], extOnWall: true,
-    inspector: null, bellAt: -10,
+    inspector: null, bellAt: -10, inc: freshInc(),
     noise: [],
     ev: { next: solo ? 75 : shiftLen * DIRECTOR.calmUntil + 8, cd: {}, log: [] },
     spawnAt: 2.5,
@@ -955,3 +956,4 @@ Sim.prototype.handlers = {
 
 installKitchen(Sim);
 installParty(Sim);
+installIncidents(Sim);

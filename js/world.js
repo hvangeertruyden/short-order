@@ -29,7 +29,8 @@ const HIT = new THREE.MeshBasicMaterial({ visible: false }); HIT.userData.shared
 export const COLLIDERS = [];
 const col = (x0, z0, x1, z1) => COLLIDERS.push({ x0, z0, x1, z1 });
 
-const TOP = 0.92;   // kitchen counter height
+const TOP = 0.92;
+let FLAME_TEX = null;   // shared texture for fire sprites
 
 export class World {
   constructor(scene) {
@@ -279,7 +280,7 @@ export class World {
       g.rotation.x = -0.12;
     }
     { const g = ia(grp(S, (L.rail.x0 + L.rail.x1) / 2, L.rail.y, L.rail.z - 0.04), 'rail'); g.add(Mo.railModel(L.rail.x1 - L.rail.x0 + 0.3)); }
-    { const g = ia(grp(S, L.bell.x, L.pass.shelfY, L.bell.z), 'bell'); g.add(Mo.bellModel()); hitBox(g, 0.18, 0.12, 0.18, 0, 0, 0); }
+    { const g = ia(grp(S, L.bell.x, L.pass.shelfY, L.bell.z), 'bell'); this.bellObj = g; g.add(Mo.bellModel()); hitBox(g, 0.18, 0.12, 0.18, 0, 0, 0); }
     // prep island in the middle (cabinets on both long sides, butcher-block top)
     {
       const I = L.island;
@@ -462,7 +463,7 @@ export class World {
   itemSig(it) {
     if (!it) return '-';
     switch (it.type) {
-      case 'food': return `${it.kind}|${it.step}|${Math.round(Math.min(1, it.p) * 5)}|${it.q.burnt}|${it.q.floor}|${it.q.messy}|${it.cheese}|${it.style}|${it.toppings.join(',')}`;
+      case 'food': return `${it.kind}|${it.step}|${Math.round(Math.min(1, it.p) * 5)}|${it.q.burnt}|${it.q.floor}|${it.q.messy}|${it.cheese}|${it.style}|${it.toppings.join(',')}|${it.candle ? 'c' : ''}`;
       case 'plate': return 'P' + (it.dirty ? 'D' : '') + it.items.map((f) => this.itemSig(f)).join(';');
       case 'tray': return 'T' + this.itemSig(it.plate) + (it.receiptId || '');
       case 'cup': return `cup|${it.ice}|${Math.round(Math.min(1.1, it.fill) * 10)}|${it.lid}`;
@@ -520,14 +521,26 @@ export class World {
     if (s.fire) {
       const at = s.fire.at;
       const f = this.ensure('fire:' + at, 'x', () => {
+        // soft licking flames: additive sprites with a teardrop glow texture
+        FLAME_TEX ||= Mo.canvasTex(64, 128, (c, w, h) => {
+          const g = c.createRadialGradient(w / 2, h * 0.72, 2, w / 2, h * 0.62, h * 0.55);
+          g.addColorStop(0, 'rgba(255,250,210,1)'); g.addColorStop(0.25, 'rgba(255,200,60,0.95)'); g.addColorStop(0.55, 'rgba(255,90,10,0.6)'); g.addColorStop(1, 'rgba(160,20,0,0)');
+          c.fillStyle = g; c.beginPath(); c.moveTo(w / 2, 0); c.bezierCurveTo(w * 1.05, h * 0.45, w, h, w / 2, h); c.bezierCurveTo(0, h, -w * 0.05, h * 0.45, w / 2, 0); c.fill();
+        }).tex;
         const g = new THREE.Group(); g.userData.noHit = true;
-        const n = at === 'fryer' ? 6 : 9, w = at === 'fryer' ? 1.2 : 2.8;
-        for (let i = 0; i < n; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.55, 10), emissive(i % 2 ? C.orange : 0xFFD23C, 1.1)); c.position.set(-w / 2 + (i + 0.5) * (w / n), 0.27, (Math.random() - 0.5) * 0.3); c.castShadow = false; g.add(c); }
+        const n = at === 'fryer' ? 16 : 30, w = at === 'fryer' ? 1.1 : 2.6;
+        for (let i = 0; i < n; i++) {
+          const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: FLAME_TEX, color: 0xFFFFFF, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false }));
+          sp.userData = { x: -w / 2 + (i + 0.5) * (w / n) + (Math.random() - 0.5) * 0.1, z: (Math.random() - 0.5) * 0.35, ph: Math.random() * 10, k: 0.7 + Math.random() * 0.6 };
+          g.add(sp);
+        }
         return g;
       });
-      const fx = at === 'fryer' ? L.fryer.x : L.griddle.x;
-      f.position.set(fx, 1.0, L.griddle.z);
-      f.children.forEach((c, i) => { c.scale.y = 0.8 + Math.abs(Math.sin(time * 9 + i * 1.7)) * 0.9; c.scale.x = c.scale.z = 0.8 + Math.sin(time * 7 + i) * 0.2; });
+      const fx = at === 'fryer' ? L.fryer.x : at === 'staff' ? L.staffMeal.x : at === 'poster' ? L.poster.x : L.griddle.x;
+      if (at === 'staff' || at === 'poster') { f.scale.setScalar(0.35); f.position.set(fx, at === 'poster' ? L.poster.y - 0.25 : TOP + 0.05, at === 'poster' ? -6.85 : L.staffMeal.z); }
+      else f.position.set(fx, 1.0, L.griddle.z);
+      f.children.forEach((c) => { const u = c.userData, t = time * 7 + u.ph, hgt = (0.42 + Math.abs(Math.sin(t)) * 0.3 + Math.sin(t * 2.3) * 0.08) * u.k * (s.fire.big ? 1.5 : 1); c.scale.set(hgt * 0.75, hgt * 1.1, 1); c.position.set(u.x + Math.sin(t * 1.7) * 0.04, hgt * 0.42 - 0.04, u.z); c.material.opacity = 0.75 + Math.sin(t * 3) * 0.2; });
+      if (Math.random() < 0.4) this.life.emit(f.position.x + (Math.random() - 0.5) * (at === 'fryer' ? 0.8 : 2), f.position.y + 0.55, f.position.z + 0.1, 0.75, 0x35302B, 0.55);
       this.fireLight.position.set(fx, 1.6, -6.3);
       this.fireLight.intensity = 4 + Math.sin(time * 20) * 1.5;
     } else this.fireLight.intensity = 0;
@@ -600,9 +613,11 @@ export class World {
 
     // puddles
     for (const p of s.puddles) {
-      const colr = p.kind === 'sick' ? C.sick : p.kind === 'shake' ? C.pink : p.kind === 'flood' ? 0x3FB4F0 : 0x5A2A10;
+      const colr = { sick: C.sick, shake: C.pink, flood: 0x3FB4F0, water: 0x7EC8EE, oil: 0xD9A43A, coffee: 0x3A1E0C, food: 0x9A5A2A }[p.kind] ?? 0x5A2A10;
       const o = this.ensure(`pud:${p.id}`, p.kind, () => {
         if (p.kind === 'tp') { const g = Mo.tpMessModel(); ia(g, `puddle:${p.id}`); return g; }
+        if (p.kind === 'shards') { const g = Mo.shardsModel(); ia(g, `puddle:${p.id}`); return g; }
+        if (p.kind === 'food') { const g = Mo.foodMessModel(); ia(g, `puddle:${p.id}`); return g; }
         const g = new THREE.Group();
         if (p.kind === 'flood') for (let i = 0; i < 9; i++) { const b = sph(g, 0.05 + (i % 3) * 0.02, new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.05, transparent: true, opacity: 0.75 }), Math.cos(i * 2.4) * 0.3, 0.03, Math.sin(i * 2.4) * 0.25, 1, 0.8, 1, 10); b.castShadow = false; }
         const m = cyl(g, 0.45, 0.45, 0.008, new THREE.MeshStandardMaterial({ color: colr, roughness: 0.05, transparent: true, opacity: 0.85 }), 0, 0.004, 0, 24); m.scale.set(1, 1, 0.7); m.castShadow = false;
@@ -612,6 +627,8 @@ export class World {
       o.position.set(p.x, 0, p.z);
       const sz = Math.max(0.15, p.size ?? (p.kind === 'sick' ? 1.3 : 1)); o.scale.set(sz, 1, sz);
     }
+
+    this.updateIncidents(s, dt, time);
 
     // stuff dropped on the floor (falls with a little bounce)
     for (const f of s.floor) {
@@ -655,9 +672,10 @@ export class World {
   }
 
   updatePerson(key, c, s, myRole, dt, time) {
-    const obj = this.ensure(key, 'x', () => { const g = jellyPerson({ color: c.color, hat: c.hat, kind: c.kind, scale: 0.92 + ((c.id * 37) % 17) / 100 }); ia(g, key); const b = label('bubble'); b.position.set(0, 1.95, 0); g.add(b); g.userData.bubble = b; return g; });
+    const obj = this.ensure(key, 'x', () => { const g = jellyPerson({ color: c.color, hat: c.hat, kind: c.kind, scale: 0.92 + ((c.id * 37) % 17) / 100 }); ia(g, key); const b = label('bubble'); b.position.set(0, 1.95, 0); g.add(b); g.userData.bubble = b; if (c.kind === 'artist') { const bl = Mo.balloonBunch(); bl.position.set(0.38, 1.05, 0.12); g.add(bl); g.userData.balloons = bl; } return g; });
+    if (obj.userData.balloons) { const bl = obj.userData.balloons; bl.children.forEach((b, i) => { b.visible = !(c.st === 'popped' || c.st === 'leaving') || i % 3 !== 0; b.rotation.z = Math.sin(time * 1.5 + i) * 0.12; }); }
     const lead = c.leader ? s.customers.find((o) => o.id === c.leader) : c;
-    const seated = !!c.seat && ['waitFood', 'eating', 'seated'].includes(c.st) && Math.hypot(c.x - c.seat.x, c.z - c.seat.z) < 0.05;
+    const seated = !!c.seat && ['waitFood', 'eating', 'seated', 'stall'].includes(c.st) && Math.hypot(c.x - c.seat.x, c.z - c.seat.z) < 0.05;
     const eating = c.st === 'eating' || (c.st === 'seated' && lead?.st === 'eating');
     const pose = c.sick ? 'sick' : eating && seated ? 'eat' : seated ? 'sit' : 'idle';
     const tint = c.sick ? { color: C.sick, amount: 0.75 } : c.stage === 'furious' ? { color: 0xFF2A2A, amount: 0.55 + Math.abs(Math.sin(time * 10)) * 0.2 } : c.stage === 'angry' ? { color: 0xFF4A3A, amount: 0.3 } : null;
@@ -758,6 +776,39 @@ export class World {
     });
   }
 
+  // everything the incidents put in the world (see incidents.js)
+  updateIncidents(s, dt, time) {
+    const I = s.inc || {};
+    // flipped tables lie on their side
+    for (const tb of s.tables) {
+      const V = this.vis.tables[tb.n]; if (!V) continue;
+      const want = tb.flipped ? -1.42 : 0;
+      V.group.rotation.x += (want - V.group.rotation.x) * Math.min(1, dt * 9);
+      V.group.position.y = Math.sin(-V.group.rotation.x) * 0.38;
+    }
+    // the stray dog
+    if (I.dog) {
+      const d = this.ensure('dog', 'x', () => { const g = Mo.dogModel(); ia(g, 'dog'); hitBox(g, 0.5, 0.6, 0.8, 0, 0, 0); return g; });
+      d.position.set(I.dog.x, 0, I.dog.z); d.rotation.y = I.dog.yaw;
+      const u = d.userData, ph = time * 16;
+      u.legs?.forEach((l, i) => { l.rotation.x = Math.sin(ph + (i % 2 ? Math.PI : 0) + (i > 1 ? Math.PI / 2 : 0)) * 0.6; });
+      if (u.tail) u.tail.rotation.y = Math.sin(time * 18) * 0.6;
+      if (u.body) u.body.position.y = 0.32 + Math.abs(Math.sin(ph)) * 0.03;
+    }
+    // the cook's forgotten lunch
+    if (I.staffMeal || s.fire?.at === 'staff') {
+      const m = this.ensure('staffmeal', 'x', () => { const g = Mo.staffMealModel(); ia(g, 'staffmeal'); hitBox(g, 0.4, 0.3, 0.4, 0, 0, 0); return g; });
+      m.position.set(L.staffMeal.x, TOP, L.staffMeal.z);
+    }
+    // the knife on the floor
+    if (I.knife) { const k = this.ensure('knife', 'x', () => { const g = Mo.knifeModel(); ia(g, 'knife'); hitBox(g, 0.4, 0.15, 0.3, 0, 0, 0); return g; }); k.position.set(I.knife.x, 0.01, I.knife.z); k.rotation.y = I.knife.x * 3; }
+    // the poster (charred once it's burned) and the smoke detector
+    { const p = this.ensure('poster', I.posterBurnt ? 'b' : 'n', () => { const g = Mo.posterModel(I.posterBurnt); ia(g, 'poster'); hitBox(g, 0.5, 0.6, 0.1, 0, -0.3, 0); return g; }); p.position.set(L.poster.x, L.poster.y, -6.95); }
+    { const on = s.alarm && Math.sin(time * 12) > 0; const dd = this.ensure('detector', on ? '1' : '0', () => { const g = Mo.detectorModel(on); ia(g, 'detector'); hitBox(g, 0.5, 0.3, 0.5, 0, -0.3, 0); return g; }); dd.position.set(L.detector.x, L.ceiling, L.detector.z); }
+    // the stuck order bell rattles
+    if (this.bellObj) this.bellObj.rotation.z = I.bellStuck ? Math.sin(time * 45) * 0.18 : 0;
+  }
+
   // fans, the clock, flickering neon and steam from whatever's cooking
   updateLife(s, dt, time) {
     const D = this.decor;
@@ -779,6 +830,12 @@ export class World {
     s.stations.toaster.forEach((it, i) => { if (it?.type === 'food' && !it.popped) src.push({ x: L.toaster.x + (i ? 0.15 : -0.15), y: TOP + 0.26, z: L.toaster.z, rate: 0.8, size: 0.2 }); });
     if (s.coffeeM) src.push({ x: L.coffee.x + 0.08, y: 1.25, z: L.coffee.z, rate: s.coffeeM.mug.p < 1 ? 2 : 0.6, size: 0.18 });
     s.trays.forEach((tr, i) => { if (tr?.plate?.items.some((f) => f.age < 25)) src.push({ x: L.trays[i].x, y: L.pass.shelfY + 0.12, z: L.wallZ, rate: 0.9, size: 0.2 }); });
+    const I = s.inc || {};
+    if (I.freezerOpenAt != null) src.push({ x: L.freezer.x + (Math.random() - 0.5) * 1.2, y: 1.2, z: L.freezer.z + 0.55, rate: 6, size: 0.45 });
+    if (I.coffee?.phase === 'leak') { src.push({ x: L.coffee.x, y: 1.3, z: L.coffee.z, rate: 5, size: 0.3 }); if (Math.random() < dt * 4) this.life.emit(L.coffee.x, 1.15, L.coffee.z + 0.1, 0.2, 0x3A2A1E, 0.6); }
+    if (I.staffMeal && s.t > I.staffMeal.burnAt - 12 && Math.random() < dt * 3) this.life.emit(L.staffMeal.x, TOP + 0.12, L.staffMeal.z, 0.3, 0x6A625A, 0.45);
+    if (I.toasterJam && s.stations.toaster.some((x) => x) && Math.random() < dt * 2.5) this.life.emit(L.toaster.x, TOP + 0.3, L.toaster.z, 0.25, 0x5A544E, 0.45);
+    if (s.fire && (s.fire.at === 'staff' || s.fire.at === 'poster') && Math.random() < dt * 6) this.life.emit(s.fire.at === 'staff' ? L.staffMeal.x : L.poster.x, s.fire.at === 'staff' ? TOP + 0.3 : L.poster.y + 0.2, s.fire.at === 'staff' ? L.staffMeal.z : -6.8, 0.5, 0x3E3934, 0.55);
     this.life.update(dt, time, src);
   }
 
