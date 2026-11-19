@@ -14,5 +14,8 @@ class NoCache(http.server.SimpleHTTPRequestHandler):
         pass
 
 http.server.ThreadingHTTPServer.allow_reuse_address = True
+# the page pulls ~40 files at once (modules, sounds, 3D models): the default backlog of 5 drops some
+http.server.ThreadingHTTPServer.request_queue_size = 128
+http.server.ThreadingHTTPServer.daemon_threads = True
 print(f'Short Order running at http://localhost:{PORT}')
 http.server.ThreadingHTTPServer(('', PORT), NoCache).serve_forever()

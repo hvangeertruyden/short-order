@@ -24,7 +24,7 @@ export const M = {
   griddleTop: shared(new THREE.MeshStandardMaterial({ color: 0x2C2C2E, metalness: 0.7, roughness: 0.35 })),
   black: shared(new THREE.MeshStandardMaterial({ color: 0x1C1C1E, roughness: 0.5 })),
   rubber: shared(new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 })),
-  ceramic: shared(new THREE.MeshStandardMaterial({ color: 0xFBFAF6, roughness: 0.18 })),
+  ceramic: shared(new THREE.MeshStandardMaterial({ color: 0xE6E1D6, roughness: 0.32 })),
   glass: shared(new THREE.MeshPhysicalMaterial({ color: 0xDDEEF2, roughness: 0.05, transmission: 0.0, transparent: true, opacity: 0.32, metalness: 0 })),
   frost: shared(new THREE.MeshStandardMaterial({ color: 0xE8F4F8, roughness: 0.3, transparent: true, opacity: 0.55 })),
   wood: shared(new THREE.MeshStandardMaterial({ color: 0xB9844E, roughness: 0.6 })),
@@ -106,6 +106,8 @@ function doneness(item) {
 }
 const prepDone = (item, verb) => { const r = recipe(item); const i = r.steps.findIndex((s) => s.verb === verb); return i >= 0 && item.step > i; };
 
+// detailed downloaded models for a few finished items (filled in by furnish.js once loaded)
+export const OVERRIDES = {};
 export function itemModel(item) {
   const g = new THREE.Group();
   const d = doneness(item);
@@ -114,6 +116,7 @@ export function itemModel(item) {
   const untouched = item.step === 0 && item.p === 0;
   switch (item.kind) {
     case 'pancakes': {
+      if (OVERRIDES.pancakes && !burnt && item.step >= 3 && prepDone(item, 'Add butter & syrup')) { g.add(OVERRIDES.pancakes()); break; }
       if (untouched) { // batter pitcher
         lathe(g, [[0, 0], [0.06, 0], [0.065, 0.02], [0.058, 0.12], [0.065, 0.14], [0.06, 0.145]], M.ceramic);
         cyl(g, 0.056, 0.056, 0.005, fm(0xF2E3BE, 0.2), 0, 0.125);
@@ -288,6 +291,7 @@ export function trayModel() {
 }
 export function cupModel(cup) {
   const g = new THREE.Group();
+  if (OVERRIDES.sodaCup && cup.lid && cup.fill >= 0.8 && cup.fill <= 1.02) { g.add(OVERRIDES.sodaCup()); return g; }
   lathe(g, [[0, 0], [0.04, 0], [0.052, 0.16], [0.055, 0.162], [0.054, 0.165]], paint(0xFFFFFF, 0.6), 0, 0, 0, 22);
   const band = lathe(g, [[0.0425, 0.05], [0.048, 0.11], [0.0485, 0.11], [0.043, 0.05]], paint(C.cherry, 0.5), 0, 0, 0, 22); void band;
   if (cup.fill > 0.02) { const h = Math.min(1, cup.fill) * 0.15; lathe(g, [[0, 0.006], [0.039, 0.006], [0.039 + h * 0.08, 0.006 + h], [0, 0.006 + h]], paint(0x3A1A0E, 0.15)); }

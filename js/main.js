@@ -8,7 +8,8 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { newFood } from './kitchen.js';
 import { itemModel } from './models.js';
 import { SOURCES, RECIPES, MUSIC } from './data.js';
-import { World, heldModel, heldSig, receiptHeldModel } from './world.js';
+import { World, heldModel, heldSig, receiptHeldModel, COLLIDERS } from './world.js';
+import { furnish } from './furnish.js';
 import { Sim, receiptById } from './sim.js';
 import { getMenu, canTouch } from './actions.js';
 import { Controls, isTyping } from './player.js';
@@ -50,6 +51,7 @@ const rcptGroup = new THREE.Group(); rcptGroup.position.set(-0.3, -0.26, -0.5); 
 camera.add(new THREE.PointLight(0xFFFFFF, 0.6, 1.5));
 
 const world = new World(scene);
+furnish(world, COLLIDERS);   // detailed furniture streams in after the first frame
 const post = createPost(renderer, scene, camera);
 try { const q = localStorage.getItem('shortorder.quality'); if (q != null) post.setQuality(Number(q)); } catch {}
 const controls = new Controls(renderer.domElement);

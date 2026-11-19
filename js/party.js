@@ -4,7 +4,7 @@
 // The party leader orders, pays and has the patience meter; the others tag
 // along, sit at their own chairs and occasionally get up.
 // ---------------------------------------------------------------------------
-import { MENU, DRINKS, TUNING as T, L, TABLES, tableSeats, LINES } from './data.js';
+import { MENU, DRINKS, TUNING as T, L, TABLES, tableSeats, tableBlocks, LINES } from './data.js';
 import { route, tableDef, custById, tableById, receiptById, ticketById, isNoisy, registerUp } from './sim.js';
 import { orderList, dishIssues, payMultiplier, drinkOf, drinkIssues, isMenuItem } from './kitchen.js';
 
@@ -26,7 +26,7 @@ export function drinkText(list) {
 // table seats + the aisle point you walk to before stepping into each seat
 const SEATS = new Map(TABLES.map((t) => [t.n, tableSeats(t)]));
 function blocked(x, z) {
-  return TABLES.some((t) => { const h = (t.shape === 'round' ? 0.52 : 0.4) + 0.12; return Math.abs(x - t.x) < h && Math.abs(z - t.z) < h; });
+  return TABLES.some((t) => tableBlocks(t, x, z));
 }
 function clearSegment(a, b) {
   const n = Math.ceil(dist(a, b) / 0.1);

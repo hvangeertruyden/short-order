@@ -230,38 +230,43 @@ export const L = {
   breadbox: { x: -0.55, z: -4.35 },
   prep: { z: -4.35, slotX: [-4.15, -3.2, -2.25] },
 
-  // dining room: order counter runs along the left wall (where the bar is in the plan)
-  counter: { x0: -6.05, x1: -5.35, z0: -0.4, z1: 5.3 },     // customers stand on its east side
-  backCounter: { x0: -8, x1: -7.35, z0: -1.6, z1: 5.3 },    // drink station against the wall
-  regOrder: { x: -5.7, z: 1.9 },
-  tentHolder: { x: -5.7, z: 3.0 },
-  host: { x: -6.55, z: 7.85, w: 1.5, d: 0.7 },              // host stand by the door = pay register
-  regPay: { x: -6.55, z: 7.85 },
-  // drink station items along the back counter (z positions; they face +x)
-  mugs: { x: -7.68, z: -1.15 },
-  coffee: { x: -7.68, z: -0.3 },
-  cups: { x: -7.68, z: 0.45 },
-  ice: { x: -7.68, z: 0.95 },
-  soda: { x: -7.68, z: 1.75 },
-  lids: { x: -7.68, z: 2.7 },
-  menuBoard: { x: -7.94, y: 2.3, z: 3.9 },
+  // dining room (classic diner plan): a lunch counter runs parallel to the pass, the server
+  // works the strip between them; booths line the right wall, four-tops in the middle
+  counter: { x0: -7.3, x1: -0.8, z0: 0.55, z1: 1.25 },      // customers stand on its south face
+  backCounter: { x0: -7.9, x1: -5.25, z0: -1.9, z1: -1.25 }, // drink station against the kitchen wall
+  regOrder: { x: -3.2, z: 0.9 },
+  tentHolder: { x: -4.35, z: 0.9 },
+  host: { x: 1.75, z: 8.4, w: 1.0, d: 0.6 },                // register stand right of the front door
+  regPay: { x: 1.75, z: 8.4 },
+  // drink station items along the back counter (x positions; they face +z)
+  mugs: { x: -7.62, z: -1.55 },
+  coffee: { x: -7.1, z: -1.55 },
+  cups: { x: -6.7, z: -1.55 },
+  ice: { x: -6.37, z: -1.55 },
+  lids: { x: -6.03, z: -1.55 },
+  soda: { x: -5.6, z: -1.55 },
+  menuBoard: { x: -3.0, y: 2.35, z: -1.87 },
   fTrash: { x: -0.4, z: -1.6 },
   mopDining: { x: 3.8, z: -6.6 },          // janitor bucket at the end of the restroom corridor
-  jukebox: { x: 7.45, z: 3.3 },
+  jukebox: { x: 2.1, z: -1.55 },
   door: { x: 0, z: 9, w: 2.0 },
-  windows: [-6.2, -3.6, 3.6, 6.2],
-  // walking: queue in front of the counter, pickup at its north end, pay at the host stand
-  orderLine: { x: -4.75, z: 1.9, step: 0.85 },     // grows toward +z (toward the door)
-  pickup: { x: -4.75, z: 0.95 },                    // waiting for a drink: north of the register
-  payLine: { x: -5.35, z: 7.85, step: 0.8 },        // grows toward +x
-  inspectorSpot: { x: 6.6, z: 7.7 },
+  // the building is an L: the front-left corner (x < cut.x, z > cut.z) is outside, a little forecourt
+  cut: { x: -1.1, z: 4.35 },
+  windows: [3.6, 6.2],             // front wall (z = 9)
+  cutWindows: [-6.2, -3.6],        // the short front wall of the counter side (z = cut.z)
+  // walking: queue in front of the counter, pickup beside the register, pay at the stand by the door
+  orderLine: { x: -3.2, z: 1.95, step: 0.85 },     // grows toward -x, along the counter
+  pickup: { x: -2.2, z: 1.95 },                     // waiting for a drink: beside the register
+  payLine: { x: 2.55, z: 8.35, step: 0.8 },         // grows toward +x
+  inspectorSpot: { x: -0.4, z: 6.0 },
   // places customers wander over to while they wait (face = what they look at)
   wanderSpots: [
-    { x: 6.55, z: 3.3, face: { x: 7.45, z: 3.3 }, bubble: '🎵' },
-    { x: 6.75, z: 7.75, face: { x: 7.3, z: 8.4 }, bubble: '🍬' },
-    { x: -3.6, z: 8.2, face: { x: -3.6, z: 9.5 }, bubble: '☁️' },
-    { x: -4.1, z: 4.3, face: { x: -7.9, z: 3.9 }, bubble: '🤔' },
-    { x: 6.85, z: 6.4, face: { x: 7.5, z: 6.4 }, bubble: '🌿' },
+    { x: 2.1, z: -0.65, face: { x: 2.1, z: -1.6 }, bubble: '🎵' },
+    { x: -2.3, z: 3.35, face: { x: -1.65, z: 3.9 }, bubble: '🍬' },
+    { x: -3.6, z: 3.65, face: { x: -3.6, z: 5.0 }, bubble: '☁️' },
+    { x: -4.4, z: 3.4, face: { x: -3.0, z: -1.9 }, bubble: '🤔' },
+    { x: -6.85, z: 3.3, face: { x: -7.5, z: 3.85 }, bubble: '🌿' },
+    { x: -6.4, z: 2.5, face: { x: -7.3, z: 2.75 }, bubble: '🐶' },
   ],
   // restrooms: corridor mouth, each room's door line and the spot by the toilet
   corridorMouth: { x: 3.8, z: -0.8 },
@@ -271,33 +276,38 @@ export const L = {
   ],
   plunger: { x: 4.3, z: -6.86 },
   // aisle network customers walk along (no cutting through furniture)
-  aisleX: [-3.85, -0.5, 3.1],
-  aisleZ: [0.0, 3.3, 6.6],
+  aisleX: [-0.3, 2.9, 5.6],
+  aisleZ: [0.0, 3.85, 7.4],
   entry: { x: 0, z: 8.2 },
 };
 
-// Every chair at a table (first one = the 'seat' above). Round tables seat 4,
-// square two-tops seat 2. yaw = facing the table.
+// Every place at a table (first one = the 'seat' above). Booths and four-tops both seat 4.
+// yaw = facing the table.
 export function tableSeats(t) {
-  const r = t.shape === 'round' ? 0.82 : 0.68;
   const base = Math.atan2(t.seat.x - t.x, t.seat.z - t.z);
-  const angs = t.shape === 'round' ? [0, Math.PI, Math.PI / 2, -Math.PI / 2] : [0, Math.PI];
-  return angs.map((a0) => {
-    const a = base + a0, x = t.x + Math.sin(a) * r, z = t.z + Math.cos(a) * r;
-    return { x, z, yaw: Math.atan2(-(t.x - x), -(t.z - z)) };
-  });
+  const face = (x, z) => ({ x, z, yaw: Math.atan2(-(t.x - x), -(t.z - z) ) });
+  if (t.shape === 'booth') {
+    // two benches facing each other across the table, two people per bench
+    const ax = Math.sin(base), az = Math.cos(base), lx = az, lz = -ax, r = 0.74, w = 0.36;
+    return [[r, -w], [-r, w], [r, w], [-r, -w]].map(([a, l]) => { const x = t.x + ax * a + lx * l, z = t.z + az * a + lz * l; return { x, z, yaw: Math.atan2(ax * Math.sign(a), az * Math.sign(a)) }; });
+  }
+  const r = 0.66;
+  return [0, Math.PI, Math.PI / 2, -Math.PI / 2].map((a0) => { const a = base + a0; return face(t.x + Math.sin(a) * r, t.z + Math.cos(a) * r); });
 }
-
-// Tables: shape, centre, and where the customer sits (seat) + how they face.
-// approach = the aisle point next to the seat they walk to first.
+// floor a walking customer can't cross: the table top, plus a booth's high bench backs
+export function tableBlocks(t, x, z) {
+  const base = Math.atan2(t.seat.x - t.x, t.seat.z - t.z), dx = x - t.x, dz = z - t.z;
+  const along = dx * Math.sin(base) + dz * Math.cos(base), side = dx * Math.cos(base) - dz * Math.sin(base);
+  if (t.shape === 'booth') return (Math.abs(along) < 0.5 && Math.abs(side) < 0.62) || (Math.abs(along) > 0.95 && Math.abs(along) < 1.3 && Math.abs(side) < 0.9);
+  return Math.abs(along) < 0.55 && Math.abs(side) < 0.55;
+}
 export const TABLES = [
-  { n: 1, shape: 'round',  x: -2.2, z: 1.5, seat: { x: -2.2, z: 2.3, yaw: 0 },        approach: { x: -2.2, z: 3.3 } },
-  { n: 2, shape: 'round',  x: 1.2,  z: 1.5, seat: { x: 1.2,  z: 2.3, yaw: 0 },        approach: { x: 1.2,  z: 3.3 } },
-  { n: 3, shape: 'square', x: 5.3,  z: 1.5, seat: { x: 5.3,  z: 2.2, yaw: 0 },        approach: { x: 5.3,  z: 3.3 } },
-  { n: 4, shape: 'round',  x: -2.2, z: 5.0, seat: { x: -2.2, z: 5.8, yaw: 0 },        approach: { x: -2.2, z: 6.6 } },
-  { n: 5, shape: 'round',  x: 1.2,  z: 5.0, seat: { x: 1.2,  z: 5.8, yaw: 0 },        approach: { x: 1.2,  z: 6.6 } },
-  { n: 6, shape: 'square', x: 5.3,  z: 5.0, seat: { x: 5.3,  z: 5.7, yaw: 0 },        approach: { x: 5.3,  z: 6.6 } },
-  { n: 7, shape: 'square', x: 3.3,  z: 8.1, seat: { x: 2.62, z: 8.1, yaw: -Math.PI / 2 }, approach: { x: 2.62, z: 6.6 } },
+  { n: 1, shape: 'booth',  x: 7.1, z: 0.2, seat: { x: 7.1, z: 0.94, yaw: 0 }, approach: { x: 5.6, z: 0.94 } },
+  { n: 2, shape: 'booth',  x: 7.1, z: 3.6, seat: { x: 7.1, z: 4.34, yaw: 0 }, approach: { x: 5.6, z: 4.34 } },
+  { n: 3, shape: 'booth',  x: 7.1, z: 7.0, seat: { x: 7.1, z: 7.74, yaw: 0 }, approach: { x: 5.6, z: 7.74 } },
+  { n: 4, shape: 'square', x: 1.6, z: 2.0, seat: { x: 1.6, z: 2.66, yaw: 0 }, approach: { x: 1.6, z: 3.85 } },
+  { n: 5, shape: 'square', x: 4.2, z: 2.0, seat: { x: 4.2, z: 2.66, yaw: 0 }, approach: { x: 4.2, z: 3.85 } },
+  { n: 6, shape: 'square', x: 4.2, z: 5.7, seat: { x: 4.2, z: 6.36, yaw: 0 }, approach: { x: 4.2, z: 7.4 } },
 ];
 
 // --------------------------------------------------------------------------

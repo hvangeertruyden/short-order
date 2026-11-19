@@ -70,17 +70,17 @@ export class World {
     this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.035;
     this.scene.add(this.sun, this.sun.target);
     // soft cool fill from each window
-    for (const x of L.windows) { const r = new THREE.RectAreaLight(0xCFE6FF, 2.2, 2.0, 1.4); r.position.set(x, 1.6, 8.84); r.lookAt(x, 1.6, 0); this.scene.add(r); }
+    for (const [x, z] of [...L.windows.map((x) => [x, 8.84]), ...L.cutWindows.map((x) => [x, L.cut.z - 0.21])]) { const r = new THREE.RectAreaLight(0xCFE6FF, 2.2, 2.0, 1.4); r.position.set(x, 1.6, z); r.lookAt(x, 1.6, z - 5); this.scene.add(r); }
     // warm pools under every pendant lamp
-    for (const t of TABLES) { const sp = new THREE.SpotLight(0xFFCF8F, 0, 4.6, 0.95, 0.75, 1.3); sp.position.set(t.x, L.ceiling - 1.36, t.z); sp.target.position.set(t.x, 0.7, t.z); indoor(sp, 4.5); }
+    for (const t of TABLES) { const sp = new THREE.SpotLight(0xFFCF8F, 0, 4.6, 0.95, 0.75, 1.3); sp.position.set(t.x, L.ceiling - 1.36, t.z); sp.target.position.set(t.x, 0.7, t.z); indoor(sp, 3.2); }
     // the order counter and the host stand
-    for (const [x, z] of [[-5.9, 0.6], [-5.9, 3.8], [-6.5, 7.8]]) { const sp = new THREE.SpotLight(0xFFE0B0, 0, 4.2, 0.8, 0.7, 1.3); sp.position.set(x + 0.6, 2.9, z); sp.target.position.set(x, 0.9, z); indoor(sp, 12); }
+    for (const [x, z] of [[-5.6, 0.9], [-2.6, 0.9], [1.75, 8.4]]) { const sp = new THREE.SpotLight(0xFFE0B0, 0, 4.2, 0.8, 0.7, 1.3); sp.position.set(x, 2.9, z + 0.5); sp.target.position.set(x, 0.9, z); indoor(sp, 12); }
     // general room light, lower than before so the pools read
     this.dLight = indoor(new THREE.PointLight(0xFFE3C2, 0, 12, 1.6), 3.2); this.dLight.position.set(0, 2.4, 4.0);
     // neon glows
-    this.neonGlow = indoor(new THREE.PointLight(0xFF3A6E, 0, 5, 1.6), 4.5); this.neonGlow.position.set(-5.1, 2.5, 8.4);
+    this.neonGlow = indoor(new THREE.PointLight(0xFF3A6E, 0, 5, 1.6), 4.5); this.neonGlow.position.set(-4.9, 2.5, L.cut.z - 0.6);
     this.eatGlow = indoor(new THREE.PointLight(0xFF4A4A, 0, 4.5, 1.6), 4); this.eatGlow.position.set(7.5, 2.3, 1.4);
-    this.jukeGlowL = indoor(new THREE.PointLight(0xFFB040, 0, 3.2, 1.6), 3); this.jukeGlowL.position.set(6.9, 1.2, L.jukebox.z);
+    this.jukeGlowL = indoor(new THREE.PointLight(0xFFB040, 0, 3.2, 1.6), 3); this.jukeGlowL.position.set(L.jukebox.x, 1.2, L.jukebox.z + 0.6);
     // kitchen: cool fluorescents overhead, warm work lights under the hood
     this.kLight = indoor(new THREE.PointLight(0xF6F1E2, 0, 9, 1.6), 2.2); this.kLight.position.set(-2.6, 2.3, -4.4);
     this.kLight2 = indoor(new THREE.PointLight(0xF6F1E2, 0, 7, 1.6), 1.4); this.kLight2.position.set(1.4, 2.3, -4.4);
@@ -103,6 +103,7 @@ export class World {
     const mosaic = (ctx) => { ctx.fillStyle = '#B9C4C8'; ctx.fillRect(0, 0, 256, 256); for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { ctx.fillStyle = (x * 7 + y * 3) % 5 ? '#F2F4F2' : '#7FC6C0'; ctx.fillRect(x * 32 + 1, y * 32 + 1, 30, 30); } };
     floor(3, -7, 8, -2, new THREE.MeshStandardMaterial({ map: tex(mosaic, 5, 5), roughness: 0.3 }));
     const walk = new THREE.Mesh(new THREE.PlaneGeometry(24, 6), paint(0x9A9A92, 0.9)); walk.rotation.x = -Math.PI / 2; walk.position.set(0, -0.01, 12); S.add(walk);
+    { const K = L.cut, w = K.x + 12, d = 9.2 - K.z; const fc = new THREE.Mesh(new THREE.PlaneGeometry(w, d), paint(0x9A9A92, 0.9)); fc.rotation.x = -Math.PI / 2; fc.position.set(K.x - w / 2, 0.004, K.z + d / 2); fc.receiveShadow = true; S.add(fc); }
     const street = new THREE.Mesh(new THREE.PlaneGeometry(50, 20), paint(0x45454B, 0.9)); street.rotation.x = -Math.PI / 2; street.position.set(0, -0.02, 25); S.add(street);
 
     // ---- ceiling + lights ----
@@ -116,7 +117,9 @@ export class World {
       for (const [x, y] of [[30, 30], [226, 30], [30, 226], [226, 226]]) { ctx.beginPath(); ctx.arc(x, y, 8, 0, 7); ctx.fill(); }
     });
     tin.tex.wrapS = tin.tex.wrapT = THREE.RepeatWrapping; tin.tex.repeat.set(26, 26);
-    const ceil = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), new THREE.MeshStandardMaterial({ map: tin.tex, color: 0xFFFFFF, roughness: 0.55, metalness: 0.15, emissive: 0x6E6658, emissiveIntensity: 0.35 })); ceil.rotation.x = Math.PI / 2; ceil.position.set(0, H, 1); S.add(ceil);
+    const ceilMat = new THREE.MeshStandardMaterial({ map: tin.tex, color: 0xFFFFFF, roughness: 0.55, metalness: 0.15, emissive: 0x6E6658, emissiveIntensity: 0.35 });
+    const ceilPart = (x0, x1, z0, z1) => { const t = tin.tex.clone(); t.needsUpdate = true; t.repeat.set((x1 - x0) * 1.625, (z1 - z0) * 1.625); const m = ceilMat.clone(); m.map = t; const c = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), m); c.rotation.x = Math.PI / 2; c.position.set((x0 + x1) / 2, H, (z0 + z1) / 2); S.add(c); };
+    ceilPart(-8, 8, -7, L.cut.z); ceilPart(L.cut.x, 8, L.cut.z, 9);
     this.lightPanels = [];
     const panel = (x, z, w = 1.6, d = 0.5) => { rbox(S, w + 0.1, 0.05, d + 0.1, M.steel, x, H - 0.05, z, 0.015); this.lightPanels.push(rbox(S, w, 0.02, d, emissive(0xFFF6DC, 0.9), x, H - 0.065, z, 0.008)); };
     panel(-5.2, -4.5); panel(-0.6, -4.5); panel(3.8, -4.5, 0.5, 1.2); panel(6.3, -5.8, 0.8, 0.5); panel(6.3, -3.2, 0.8, 0.5);
@@ -180,23 +183,27 @@ export class World {
     };
     // outer walls
     wallX(-8.1, 8.1, -7.1, null, 'tile');
-    wallZ(-7, -2, -8.1, null, 'tile'); wallZ(-2, 9, -8.1, null, 'diner');
+    wallZ(-7, -2, -8.1, null, 'tile'); wallZ(-2, L.cut.z, -8.1, null, 'diner');
     wallZ(-7, -2, 8.1, 'tile', null); wallZ(-2, 9, 8.1, 'diner', null);
     const dW = L.door.w / 2;
-    // front wall with windows and the double door
-    const front = 9.05;
-    let xs = [-8.1, ...L.windows.flatMap((x) => [x - 1, x + 1]), 8.1];
-    const gaps = [...L.windows.map((x) => [x - 1, x + 1]), [L.door.x - dW, L.door.x + dW]].sort((a, b) => a[0] - b[0]);
-    let cur = -8.1;
-    for (const [g0, g1] of gaps) { if (g0 > cur) wallX(cur, g0, front, 'diner', null); cur = g1; }
-    wallX(cur, 8.1, front, 'diner', null);
-    void xs;
-    for (const x of L.windows) {
-      wallX(x - 1, x + 1, front, 'diner', null, 0, 0.9);
-      wallX(x - 1, x + 1, front, null, null, 2.3, H, false);
-      const glassPane = rbox(S, 2.0, 1.4, 0.04, new THREE.MeshStandardMaterial({ color: 0xBFE6F2, roughness: 0.05, transparent: true, opacity: 0.25, emissive: 0x9ED4E8, emissiveIntensity: 0.25 }), x, 0.9, front, 0); glassPane.castShadow = false; glassPane.userData.noShadow = true;
-      for (const [w, h, dx, dy] of [[2.06, 0.06, 0, 0.88], [2.06, 0.06, 0, 2.28], [0.06, 1.46, -1.0, 0.88], [0.06, 1.46, 1.0, 0.88], [0.04, 1.4, 0, 0.9]]) rbox(S, w, h, 0.08, M.chrome, x + dx, dy, front - 0.03, 0.01);
-    }
+    // front walls with windows (+ the double door in the main one). The building is an L,
+    // so there's a short front wall on the counter side and a side wall back to the door.
+    const front = 9.05, CUT = L.cut;
+    const frontWall = (x0, x1, z, windows, door) => {
+      const gaps = [...windows.map((x) => [x - 1, x + 1]), ...(door ? [door] : [])].sort((a, b) => a[0] - b[0]);
+      let cur = x0;
+      for (const [g0, g1] of gaps) { if (g0 > cur) wallX(cur, g0, z, 'diner', null); cur = g1; }
+      if (cur < x1) wallX(cur, x1, z, 'diner', null);
+      for (const x of windows) {
+        wallX(x - 1, x + 1, z, 'diner', null, 0, 0.9);
+        wallX(x - 1, x + 1, z, null, null, 2.3, H, false);
+        const glassPane = rbox(S, 2.0, 1.4, 0.04, new THREE.MeshStandardMaterial({ color: 0xBFE6F2, roughness: 0.05, transparent: true, opacity: 0.25, emissive: 0x9ED4E8, emissiveIntensity: 0.25 }), x, 0.9, z, 0); glassPane.castShadow = false; glassPane.userData.noShadow = true;
+        for (const [w, h, dx, dy] of [[2.06, 0.06, 0, 0.88], [2.06, 0.06, 0, 2.28], [0.06, 1.46, -1.0, 0.88], [0.06, 1.46, 1.0, 0.88], [0.04, 1.4, 0, 0.9]]) rbox(S, w, h, 0.08, M.chrome, x + dx, dy, z - 0.03, 0.01);
+      }
+    };
+    frontWall(CUT.x - 0.1, 8.1, front, L.windows, [L.door.x - dW, L.door.x + dW]);
+    frontWall(-8.1, CUT.x + 0.1, CUT.z, L.cutWindows, null);
+    wallZ(CUT.z, front, CUT.x - 0.05, null, 'diner');
     wallX(L.door.x - dW, L.door.x + dW, front, null, null, 2.3, H, false);
     // double glass doors (customers walk through them)
     for (const s of [-1, 1]) {
@@ -207,7 +214,7 @@ export class World {
     // neon signs
     const neon = canvasTex(512, 128, (ctx, w, h) => { ctx.fillStyle = '#1B1B1B'; ctx.fillRect(0, 0, w, h); ctx.font = 'bold 64px Bungee, Impact, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowColor = '#FF4060'; ctx.shadowBlur = 24; ctx.fillStyle = '#FF7088'; ctx.fillText('SHORT ORDER', w / 2, h / 2 + 4); });
     const ns = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: neon.tex })); ns.position.set(0, 2.62, 9.2); S.add(ns);
-    const ns2 = ns.clone(); ns2.rotation.y = Math.PI; ns2.position.set(-3.6 - 1.5, 2.62, 8.94); S.add(ns2);
+    const ns2 = ns.clone(); ns2.rotation.y = Math.PI; ns2.position.set(-4.9, 2.62, L.cut.z - 0.11); S.add(ns2);
     this.neon = [ns, ns2];
     Mo.decal(S, 0.9, 0.32, (c, cw, ch) => { c.clearRect(0, 0, cw, ch); c.shadowColor = '#FF3050'; c.shadowBlur = 18; c.fillStyle = '#FF7088'; c.font = 'bold 70px Bungee'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('OPEN', cw / 2, ch / 2); }, 3.6, 1.95, 8.9, Math.PI, 256, 96);
 
@@ -229,24 +236,29 @@ export class World {
   buildKitchen() {
     const S = this.static;
     const cab = (x0, x1, z, depth, facing, top = true) => {
-      const w = x1 - x0, cx = (x0 + x1) / 2;
-      rbox(S, w, TOP - 0.06, depth, M.steel, cx, 0, z, 0.01);
-      if (top) rbox(S, w + 0.02, 0.06, depth + 0.03, M.steel, cx, TOP - 0.06, z, 0.008);
-      rbox(S, w, 0.08, depth - 0.06, M.black, cx, 0, z - facing * 0.03, 0.005);
+      const w = x1 - x0, cx = (x0 + x1) / 2, made = [];
+      made.push(rbox(S, w, TOP - 0.06, depth, M.steel, cx, 0, z, 0.01));
+      if (top) made.push(rbox(S, w + 0.02, 0.06, depth + 0.03, M.steel, cx, TOP - 0.06, z, 0.008));
+      made.push(rbox(S, w, 0.08, depth - 0.06, M.black, cx, 0, z - facing * 0.03, 0.005));
       const doors = Math.max(1, Math.round(w / 0.6));
       for (let i = 0; i < doors; i++) {
         const dx = x0 + (i + 0.5) * (w / doors);
-        rbox(S, w / doors - 0.03, TOP - 0.24, 0.015, M.panel, dx, 0.12, z + facing * (depth / 2 + 0.005), 0.006);
-        rbox(S, 0.16, 0.018, 0.025, M.chrome, dx, TOP - 0.2, z + facing * (depth / 2 + 0.02), 0.008);
+        made.push(rbox(S, w / doors - 0.03, TOP - 0.24, 0.015, M.panel, dx, 0.12, z + facing * (depth / 2 + 0.005), 0.006));
+        made.push(rbox(S, 0.16, 0.018, 0.025, M.chrome, dx, TOP - 0.2, z + facing * (depth / 2 + 0.02), 0.008));
       }
       col(x0, z - depth / 2, x1, z + depth / 2);
+      return made;
     };
+    // procedural pieces that the downloaded models replace once they've loaded (see furnish.js)
+    this.vis = { tables: {} };
     // the line along the back wall
-    cab(-6.25, 2.1, -6.6, 0.8, 1);
+    // (split so the griddle and fryer stretches can be swapped for real cook-line units)
+    this.vis.griddleCab = cab(-6.25, -3.3, -6.6, 0.8, 1); cab(-3.3, -2.85, -6.6, 0.8, 1);
+    this.vis.fryerCab = cab(-2.85, -1.55, -6.6, 0.8, 1); cab(-1.55, 2.1, -6.6, 0.8, 1);
     const hood = Mo.hoodModel(4.9); hood.position.set(-3.85, 2.15, -6.55); S.add(hood);
-    const gm = Mo.griddleModel(3.1, L.griddle.slotX, L.griddle.x); gm.position.set(L.griddle.x, TOP, L.griddle.z); S.add(gm);
+    const gm = Mo.griddleModel(3.1, L.griddle.slotX, L.griddle.x); gm.position.set(L.griddle.x, TOP, L.griddle.z); S.add(gm); this.vis.griddle = gm;
     L.griddle.slotX.forEach((x, i) => { const z = ia(grp(S, x, TOP, L.griddle.z), `griddle:${i}`); hitBox(z, 0.7, 0.1, 0.6, 0, 0, 0); });
-    const fm = Mo.fryerModel(L.fryer.slotX, L.fryer.x); fm.position.set(L.fryer.x, TOP, L.fryer.z); S.add(fm);
+    const fm = Mo.fryerModel(L.fryer.slotX, L.fryer.x); fm.position.set(L.fryer.x, TOP, L.fryer.z); S.add(fm); this.vis.fryer = fm;
     this.baskets = L.fryer.slotX.map((x, i) => { const z = ia(grp(S, x, TOP, L.fryer.z), `fryer:${i}`); hitBox(z, 0.6, 0.35, 0.6, 0, -0.05, 0); const b = Mo.fryBasket(); b.position.set(0, 0.17, 0); z.add(b); return b; });
     const tx = L.toaster.x;
     const tm = Mo.toasterModel(); tm.position.set(tx, TOP, L.toaster.z); S.add(tm);
@@ -254,8 +266,8 @@ export class World {
     const bm = ia(grp(S, L.blender.slotX[0], TOP, L.blender.z), 'blender:0'); bm.add(Mo.blenderModel()); hitBox(bm, 0.3, 0.5, 0.3, 0, 0, 0);
     const rk = ia(grp(S, L.rack.x, TOP, L.rack.z), 'rack'); rk.add(Mo.dishRackModel()); hitBox(rk, 0.62, 0.3, 0.46, 0, 0, 0);
     // cold storage on the left
-    const fz = ia(grp(S, L.freezer.x, 0, L.freezer.z), 'freezer'); fz.add(Mo.freezerModel()); col(-7.9, -7, -6.25, -5.9);
-    const fr = ia(grp(S, L.fridge.x, 0, L.fridge.z), 'fridge'); fr.add(Mo.fridgeModel()); col(-7.95, -4.95, -7.05, -3.85);
+    const fz = ia(grp(S, L.freezer.x, 0, L.freezer.z), 'freezer'); this.vis.freezer = Mo.freezerModel(); fz.add(this.vis.freezer); this.vis.freezerGroup = fz; col(-7.9, -7, -6.25, -5.9);
+    const fr = ia(grp(S, L.fridge.x, 0, L.fridge.z), 'fridge'); this.vis.fridge = Mo.fridgeModel(); fr.add(this.vis.fridge); this.vis.fridgeGroup = fr; col(-7.95, -4.95, -7.05, -3.85);
     // front counter left of the pass: printer, TV, ticket rail
     cab(-7.9, L.pass.x0 - 0.05, -2.45, 0.65, -1);
     { const g = ia(grp(S, L.printer.x, TOP, L.printer.z), 'printer'); g.add(Mo.printerModel()); this.printerLight = sph(g, 0.012, emissive(0x33FF66, 1), 0.11, 0.17, 0.14, 1, 1, 1, 8); }
@@ -328,23 +340,23 @@ export class World {
   buildDining() {
     const S = this.static;
     const topY = 1.04;
-    // drink station along the left wall (machines face +x)
+    // drink station against the kitchen wall, behind the lunch counter (machines face +z)
     const B = L.backCounter;
     rbox(S, B.x1 - B.x0, 0.92, B.z1 - B.z0, M.teal, (B.x0 + B.x1) / 2, 0, (B.z0 + B.z1) / 2, 0.02);
     rbox(S, B.x1 - B.x0 + 0.03, 0.04, B.z1 - B.z0 + 0.03, paint(0xF4ECDA, 0.22), (B.x0 + B.x1) / 2, 0.92, (B.z0 + B.z1) / 2, 0.01);
     col(B.x0, B.z0, B.x1, B.z1);
-    const place = (key, p, model, hw = 0.45, hh = 0.7) => { const g = ia(grp(S, p.x, 0.96, p.z), key); g.rotation.y = Math.PI / 2; g.add(model); hitBox(g, hw, hh, 0.4, 0, 0, 0); return g; };
+    const place = (key, p, model, hw = 0.45, hh = 0.7) => { const g = ia(grp(S, p.x, 0.96, p.z), key); g.add(model); hitBox(g, hw, hh, 0.4, 0, 0, 0); return g; };
     place('mugs', L.mugs, Mo.mugRackModel(), 0.42, 0.3);
     place('coffee', L.coffee, Mo.coffeeMachineModel(), 0.5, 0.7);
     place('cups', L.cups, Mo.cupStackModel(), 0.2, 0.35);
     place('ice', L.ice, Mo.iceBinModel(), 0.4, 0.25);
     place('soda', L.soda, Mo.sodaFountainModel(), 0.7, 0.75);
     place('lids', L.lids, Mo.lidDispenserModel(), 0.38, 0.4);
-    // the order counter (runs along the left side, customers on its east face)
+    // the lunch counter (parallel to the pass; customers on its south face)
     const ct = L.counter, cx = (ct.x0 + ct.x1) / 2, cz = (ct.z0 + ct.z1) / 2, cw = ct.x1 - ct.x0, cd = ct.z1 - ct.z0;
     rbox(S, cw, 0.98, cd, paint(C.cherry, 0.35), cx, 0, cz, 0.02);
     rbox(S, cw + 0.1, 0.06, cd + 0.06, paint(0xF4ECDA, 0.22), cx, 0.98, cz, 0.02);
-    for (const yy of [0.12, 0.5, 0.9]) rbox(S, 0.02, 0.035, cd, M.chrome, ct.x1 + 0.012, yy, cz, 0.008);
+    for (const yy of [0.12, 0.5, 0.9]) rbox(S, cw, 0.035, 0.02, M.chrome, cx, yy, ct.z1 + 0.012, 0.008);
     col(ct.x0, ct.z0, ct.x1, ct.z1);
     const register = (key, x, z, word, yaw) => {
       const g = ia(grp(S, x, topY, z), key); g.rotation.y = yaw;
@@ -353,9 +365,9 @@ export class World {
       const tag = label('signlabel', word); tag.position.set(0, 0.62, 0); g.add(tag);
       return scr;
     };
-    const regO = register('register', L.regOrder.x, L.regOrder.z, 'ORDER HERE', Math.PI / 2);
-    { const g = ia(grp(S, L.tentHolder.x, topY, L.tentHolder.z), 'tents'); g.rotation.y = Math.PI / 2; rbox(g, 0.42, 0.04, 0.2, M.chrome, 0, 0, 0, 0.01); hitBox(g, 0.42, 0.2, 0.22, 0, 0, 0); this.tentAnchor = grp(g, 0, 0.04, 0); }
-    // host stand by the door = pay register
+    const regO = register('register', L.regOrder.x, L.regOrder.z, 'ORDER HERE', 0);
+    { const g = ia(grp(S, L.tentHolder.x, topY, L.tentHolder.z), 'tents'); rbox(g, 0.42, 0.04, 0.2, M.chrome, 0, 0, 0, 0.01); hitBox(g, 0.42, 0.2, 0.22, 0, 0, 0); this.tentAnchor = grp(g, 0, 0.04, 0); }
+    // register stand right of the front door
     const Hs = L.host;
     { const g = grp(S, Hs.x, 0, Hs.z); g.add(Mo.hostStandModel(Hs.w, Hs.d)); col(Hs.x - Hs.d / 2, Hs.z - Hs.w / 2, Hs.x + Hs.d / 2, Hs.z + Hs.w / 2); }
     const regP = register('payreg', L.regPay.x, L.regPay.z, 'PAY HERE', Math.PI / 2);
@@ -370,32 +382,40 @@ export class World {
       Object.values(Mo.MENU).forEach((m, i) => { const c = i < 4 ? 0 : 1; const r = i % 4; ctx.fillText(m.name, 52 + c * 500, 180 + r * 70); ctx.fillText(`$${m.price}`, 390 + c * 500, 180 + r * 70); });
       ctx.fillStyle = '#F4A6B8'; ctx.fillText('COFFEE / SODA  $2', 300, 470);
     });
-    { const g = ia(grp(S, L.menuBoard.x, L.menuBoard.y, L.menuBoard.z), 'menuboard'); g.rotation.y = Math.PI / 2; const m = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.3), new THREE.MeshStandardMaterial({ map: mb.tex, roughness: 0.7, emissive: 0x222222 })); m.position.z = 0.05; g.add(m); rbox(g, 2.7, 1.4, 0.04, M.wood, 0, -0.7, 0.01, 0.02); }
+    { const g = ia(grp(S, L.menuBoard.x, L.menuBoard.y, L.menuBoard.z), 'menuboard'); const m = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.3), new THREE.MeshStandardMaterial({ map: mb.tex, roughness: 0.7, emissive: 0x222222 })); m.position.z = 0.05; g.add(m); rbox(g, 2.7, 1.4, 0.04, M.wood, 0, -0.7, 0.01, 0.02); }
     { const g = ia(grp(S, L.fTrash.x, 0, L.fTrash.z), 'ftrash'); g.add(Mo.trashModel(M.teal)); hitBox(g, 0.55, 0.8, 0.55, 0, 0, 0); col(L.fTrash.x - 0.3, L.fTrash.z - 0.3, L.fTrash.x + 0.3, L.fTrash.z + 0.3); }
     // tables + chairs
     for (const t of TABLES) {
       const g = ia(grp(S, t.x, 0, t.z), `table:${t.n}`);
-      g.add(t.shape === 'round' ? Mo.roundTableModel() : Mo.squareTableModel());
-      const nh = Mo.napkinHolder(); nh.position.set(t.shape === 'round' ? 0.18 : 0.2, 0.76, t.seat.z > t.z ? -0.2 : 0.2); nh.scale.setScalar(0.8); g.add(nh);
+      const V = this.vis.tables[t.n] = { group: g, parts: [], chairs: [] };
+      V.parts.push(g.add(t.shape === 'booth' ? Mo.roundTableModel() : Mo.squareTableModel()).children.at(-1));
+      const nh = Mo.napkinHolder(); nh.position.set(t.shape === 'booth' ? 0.18 : 0.2, 0.76, t.seat.z > t.z ? -0.2 : 0.2); nh.scale.setScalar(0.8); g.add(nh); V.parts.push(nh);
       // no number sign on the table itself: the tent is what you read
       // chairs: the customer's seat + the others around the table
-      const r = t.shape === 'round' ? 0.82 : 0.68;
-      const angles = t.shape === 'round' ? [0, Math.PI / 2, Math.PI, -Math.PI / 2] : [0, Math.PI];
+      const r = t.shape === 'booth' ? 0.82 : 0.68;
+      const angles = [0, Math.PI / 2, Math.PI, -Math.PI / 2];
       const seatAng = Math.atan2(t.seat.x - t.x, t.seat.z - t.z);
       for (const a0 of angles) {
         const a = seatAng + a0, ch = Mo.chairModel(t.n % 2 ? C.cherry : C.teal);
-        ch.position.set(t.x + Math.sin(a) * r, 0, t.z + Math.cos(a) * r); ch.rotation.y = a; S.add(ch);
+        ch.position.set(t.x + Math.sin(a) * r, 0, t.z + Math.cos(a) * r); ch.rotation.y = a; S.add(ch); V.chairs.push(ch);
       }
-      const hr = t.shape === 'round' ? 0.52 : 0.4;
+      const hr = t.shape === 'booth' ? 0.52 : 0.4;
       col(t.x - hr, t.z - hr, t.x + hr, t.z + hr);
       this[`tableAnchor${t.n}`] = grp(g, 0, 0.76, 0);
+      V.anchor = this[`tableAnchor${t.n}`];
     }
-    // jukebox on the right wall
-    { const g = ia(grp(S, L.jukebox.x, 0, L.jukebox.z), 'jukebox'); const jm = Mo.jukeboxModel(); g.add(jm); hitBox(g, 0.7, 1.4, 0.9, 0, 0, 0); this.jukeTubes = jm.userData.tubes; col(L.jukebox.x - 0.35, L.jukebox.z - 0.45, 8, L.jukebox.z + 0.45); this.jukebox = g; }
+    // jukebox against the back wall, between the kitchen and the restroom corridor
+    { const g = ia(grp(S, L.jukebox.x, 0, L.jukebox.z), 'jukebox'); const jm = Mo.jukeboxModel(); jm.rotation.y = Math.PI / 2; g.add(jm); hitBox(g, 0.9, 1.4, 0.7, 0, 0, 0); this.jukeTubes = jm.userData.tubes; col(L.jukebox.x - 0.45, L.wallZ, L.jukebox.x + 0.45, L.jukebox.z + 0.35); this.jukebox = g; }
     // gumball machine + plants
-    { const gb = grp(S, 7.3, 0, 8.4); Mo.cyl(gb, 0.04, 0.06, 0.8, M.cherry, 0, 0, 0, 14); Mo.cyl(gb, 0.16, 0.12, 0.12, M.cherry, 0, 0.8, 0, 20); Mo.sph(gb, 0.17, M.glass, 0, 1.08, 0, 1, 1, 1, 20); for (let i = 0; i < 14; i++) Mo.sph(gb, 0.035, Mo.paint([0xFF4060, 0xFFE040, 0x40C0FF, 0x7CC44E][i % 4], 0.2), Math.cos(i * 2.4) * 0.09, 0.97 + (i % 4) * 0.04, Math.sin(i * 2.4) * 0.09, 1, 1, 1, 8); Mo.sph(gb, 0.05, M.cherry, 0, 1.25, 0, 1, 0.6, 1, 12); col(7.1, 8.2, 7.5, 8.6); }
+    { const gb = grp(S, -1.65, 0, 3.9); Mo.cyl(gb, 0.04, 0.06, 0.8, M.cherry, 0, 0, 0, 14); Mo.cyl(gb, 0.16, 0.12, 0.12, M.cherry, 0, 0.8, 0, 20); Mo.sph(gb, 0.17, M.glass, 0, 1.08, 0, 1, 1, 1, 20); for (let i = 0; i < 14; i++) Mo.sph(gb, 0.035, Mo.paint([0xFF4060, 0xFFE040, 0x40C0FF, 0x7CC44E][i % 4], 0.2), Math.cos(i * 2.4) * 0.09, 0.97 + (i % 4) * 0.04, Math.sin(i * 2.4) * 0.09, 1, 1, 1, 8); Mo.sph(gb, 0.05, M.cherry, 0, 1.25, 0, 1, 0.6, 1, 12); col(7.1, 8.2, 7.5, 8.6); }
     const plant = (x, z, pot) => { const p = grp(S, x, 0, z); Mo.lathe(p, [[0, 0], [0.2, 0], [0.24, 0.4], [0.25, 0.42], [0, 0.42]], pot); for (let i = 0; i < 9; i++) sph(p, 0.18, paint(0x4F9A4A, 0.6), Math.cos(i * 2.4) * 0.12, 0.6 + (i % 3) * 0.18, Math.sin(i * 2.4) * 0.12, 1, 1.4, 1, 10); col(x - 0.25, z - 0.25, x + 0.25, z + 0.25); };
-    plant(-1.6, 8.55, M.cherry); plant(7.5, 6.4, M.teal); plant(7.5, 0.0, M.cherry);
+    plant(-7.5, 3.85, M.teal); plant(5.5, 8.55, M.cherry);
+    // a cactus in the corner by the door and the diner dog's bowl
+    { const p = grp(S, -0.72, 0, 4.75); Mo.lathe(p, [[0, 0], [0.22, 0], [0.26, 0.34], [0.27, 0.36], [0, 0.36]], paint(0xC8643C, 0.8)); const cm = paint(0x3F8A4A, 0.7);
+      Mo.cyl(p, 0.11, 0.13, 0.75, cm, 0, 0.34, 0, 14); sph(p, 0.11, cm, 0, 1.09, 0, 1, 1, 1, 14);
+      for (const [sx, h, y] of [[1, 0.32, 0.6], [-1, 0.26, 0.75]]) { Mo.cyl(p, 0.06, 0.06, 0.16, cm, sx * 0.17, y, 0, 10).rotation.z = Math.PI / 2; Mo.cyl(p, 0.06, 0.06, h, cm, sx * 0.25, y, 0, 10); sph(p, 0.06, cm, sx * 0.25, y + h, 0, 1, 1, 1, 10); }
+      col(-1.0, 4.45, -0.42, 5.05); }
+    { const p = grp(S, -7.3, 0, 2.75); Mo.lathe(p, [[0, 0], [0.17, 0], [0.15, 0.07], [0.12, 0.07], [0.11, 0.025], [0, 0.025]], M.chrome); Mo.decal(p, 0.16, 0.05, (c, w, h) => { c.fillStyle = '#C8262B'; c.fillRect(0, 0, w, h); c.fillStyle = '#fff'; c.font = 'bold 40px Bungee'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('DOG', w / 2, h / 2 + 2); }, 0, 0.04, 0.165, 0, 128, 40); }
     // restrooms: toilet, washbasin + mirror, doors from the corridor, a sign
     const rx = L.corridor.x1 + 0.1;
     [[-7, -4.5, [-6.3, -5.5]], [-4.5, -2, [-3.6, -2.8]]].forEach(([z0, z1, [d0, d1]], i) => {
@@ -486,14 +506,13 @@ export class World {
         // smoke from burnt food
         if (it.type === 'food' && it.q.burnt && at !== 'prep') {
           const wp = this.worldPos(at, i);
-          const sm = this.ensure(`smoke:${at}:${i}`, 'x', () => { const g = new THREE.Group(); g.userData.noHit = true; for (let j = 0; j < 5; j++) { const p = sph(g, 0.08, new THREE.MeshStandardMaterial({ color: 0x555555, transparent: true, opacity: 0.5 }), 0, j * 0.2, 0, 1, 1, 1, 8); p.userData.off = j / 5; p.castShadow = false; } return g; });
-          sm.position.set(wp.x, wp.y, wp.z);
-          sm.children.forEach((p) => { const t = (time * 0.6 + p.userData.off) % 1; p.position.y = t * 1.0; p.scale.setScalar(0.6 + t * 1.6); p.material.opacity = 0.5 * (1 - t); });
+          // thick dark puffs rolling off it (soft sprites, same system as the steam)
+          if (Math.random() < dt * 5) this.life.emit(wp.x, wp.y + 0.08, wp.z, 0.55, 0x5A544E, 0.5);
         }
       });
     }
     // fryer baskets sit up out of the oil unless something is lowered
-    this.baskets.forEach((b, i) => { const it = s.stations.fryer[i]; const down = it?.lowered; b.position.y += ((down ? 0.04 : 0.17) - b.position.y) * Math.min(1, dt * 8); });
+    this.baskets.forEach((b, i) => { const it = s.stations.fryer[i]; const down = it?.lowered; b.position.y += ((down ? (this.basketDown ?? 0.04) : 0.17) - b.position.y) * Math.min(1, dt * 8); });
     // blender lid
     { const it = s.stations.blender[0]; const lidOn = it?.type === 'food' && it.step >= 2 && it.step < 5; if (lidOn) { const lid = this.ensure('blenderLid', 'x', () => Mo.blenderLid()); lid.position.set(L.blender.slotX[0], TOP + 0.47, L.blender.z); } }
 
@@ -756,7 +775,7 @@ export class World {
     });
     const src = [];
     s.stations.griddle.forEach((it, i) => { if (it?.type === 'food') src.push({ x: L.griddle.slotX[i], y: TOP + 0.12, z: L.griddle.z, rate: it.q?.burnt ? 1 : 2.4, size: 0.32 }); });
-    s.stations.fryer.forEach((it, i) => { if (it?.type === 'food' && it.lowered) src.push({ x: L.fryer.slotX[i], y: TOP + 0.25, z: L.fryer.z, rate: 3.5, size: 0.38 }); });
+    s.stations.fryer.forEach((it, i) => { if (it?.type === 'food' && it.lowered) src.push({ x: L.fryer.slotX[i], y: TOP + (this.basketDown ?? 0.1) + 0.12, z: L.fryer.z, rate: 3.5, size: 0.38 }); });
     s.stations.toaster.forEach((it, i) => { if (it?.type === 'food' && !it.popped) src.push({ x: L.toaster.x + (i ? 0.15 : -0.15), y: TOP + 0.26, z: L.toaster.z, rate: 0.8, size: 0.2 }); });
     if (s.coffeeM) src.push({ x: L.coffee.x + 0.08, y: 1.25, z: L.coffee.z, rate: s.coffeeM.mug.p < 1 ? 2 : 0.6, size: 0.18 });
     s.trays.forEach((tr, i) => { if (tr?.plate?.items.some((f) => f.age < 25)) src.push({ x: L.trays[i].x, y: L.pass.shelfY + 0.12, z: L.wallZ, rate: 0.9, size: 0.2 }); });

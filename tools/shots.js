@@ -28,10 +28,11 @@ export async function stage() {
   window.__dbg.advance(12, 20);
 }
 const VIEWS = {
-  dining:  { pos: [6.9, 1.7, 6.2], look: [-3.0, 1.0, 1.6] },
-  counter: { pos: [-1.6, 1.6, 6.4], look: [-6.2, 1.1, 0.8] },
+  dining:  { pos: [-0.6, 1.7, 8.4], look: [6.0, 0.9, 1.0] },
+  counter: { pos: [-0.2, 1.6, 4.0], look: [-6.0, 1.0, 0.6] },
   kitchen: { pos: [-0.6, 1.6, -2.7], look: [-3.0, 1.1, -6.6] },
-  tables:  { pos: [-4.4, 1.5, 6.9], look: [0.5, 0.8, 2.5] },
+  tables:  { pos: [0.2, 1.5, 6.8], look: [6.5, 0.8, 2.0] },
+  server:  { pos: [-1.6, 1.6, -1.3], look: [-6.5, 1.0, 1.5] },
 };
 export function view(name) {
   const v = VIEWS[name];

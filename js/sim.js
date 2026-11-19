@@ -48,7 +48,7 @@ L.aisleZ.forEach((z, zi) => L.aisleX.forEach((x, xi) => {
   if (xi + 1 < L.aisleX.length) link(nodeIdx(x, z), nodeIdx(L.aisleX[xi + 1], z));
   if (zi + 1 < L.aisleZ.length) link(nodeIdx(x, z), nodeIdx(x, L.aisleZ[zi + 1]));
 }));
-link(ENTRY, nodeIdx(L.aisleX[1], L.aisleZ[2])); link(ENTRY, nodeIdx(L.aisleX[2], L.aisleZ[2]));
+link(ENTRY, nodeIdx(L.aisleX[0], L.aisleZ[2])); link(ENTRY, nodeIdx(L.aisleX[1], L.aisleZ[2]));
 const nearestNode = (p) => NODES.reduce((b, n, i) => (Math.hypot(n.x - p.x, n.z - p.z) < Math.hypot(NODES[b].x - p.x, NODES[b].z - p.z) ? i : b), 0);
 // path of points from p to q along the aisles (q itself is the last point)
 export function route(p, q) {
@@ -270,9 +270,9 @@ export class Sim {
     this.spawnCustomer();
   }
 
-  lineSpot(i) { return { x: L.orderLine.x + (i > 5 ? 0.7 : 0), z: L.orderLine.z + Math.min(i, 5) * L.orderLine.step + (i > 5 ? (i - 6) * -L.orderLine.step : 0) }; }
+  lineSpot(i) { return { x: L.orderLine.x - Math.min(i, 5) * L.orderLine.step, z: L.orderLine.z + (i > 5 ? 0.8 : 0) }; }
   paySpot(i) { return { x: L.payLine.x + i * L.payLine.step, z: L.payLine.z }; }
-  pickupSpot(i) { return { x: L.pickup.x + (i % 2) * 0.65, z: L.pickup.z - Math.floor(i / 2) * 0.7 }; }
+  pickupSpot(i) { return { x: L.pickup.x + (i % 2) * 0.65, z: L.pickup.z + Math.floor(i / 2) * 0.7 }; }
 
   // Walk toward p with easing: speed up from a standstill, slow down when
   // arriving, cut corners at intermediate waypoints, and walk at a personal pace.

@@ -192,8 +192,8 @@ export function buildDecor(world) {
   // ceiling fans
   for (const [x, z] of [[-2.2, 3.3], [3.1, 3.3]]) { const f = fanModel(); f.position.set(x, L.ceiling, z); S.add(f); out.fans.push(f.userData.blades); }
   // pie case on the counter + sugar shakers on every table
-  { const p = pieCase(); p.position.set(-5.7, 1.04, 4.7); S.add(p); }
-  for (const t of TABLES) { const sh = sugarShaker(); sh.position.set(t.x - 0.16, 0.76, t.z + (t.seat.z > t.z ? -0.18 : 0.18)); S.add(sh); }
+  { const p = pieCase(); p.position.set(-6.7, 1.04, 0.9); S.add(p); }
+  for (const t of TABLES) { const sh = sugarShaker(); sh.position.set(t.x - 0.16, 0.76, t.z + (t.seat.z > t.z ? -0.18 : 0.18)); S.add(sh); world.vis.tables[t.n].parts.push(sh); }
   // kitchen: utensil rail, radio, spice jars
   { const r = utensilRail(); r.position.set(0.9, 1.62, -6.92); S.add(r); }
   { const r = radioModel(); r.position.set(1.95, 1.89, -6.85); S.add(r); }
@@ -220,10 +220,11 @@ export class Life {
     this.dust = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xFFE8B8, size: 0.009, transparent: true, opacity: 0.22, depthWrite: false }));
     this.dust.userData.noHit = true; scene.add(this.dust);
   }
-  emit(x, y, z, size = 0.25) {
+  emit(x, y, z, size = 0.25, color = 0xFFFFFF, alpha = 0.32) {
     const p = this.puffs.find((q) => q.life <= 0);
     if (!p) return;
-    p.life = p.max = 1.4 + Math.random() * 0.8; p.size = size;
+    p.life = p.max = 1.4 + Math.random() * 0.8; p.size = size; p.alpha = alpha;
+    p.sp.material.color.setHex(color);
     p.vx = (Math.random() - 0.5) * 0.08; p.vz = (Math.random() - 0.5) * 0.08;
     p.sp.position.set(x + (Math.random() - 0.5) * 0.15, y, z + (Math.random() - 0.5) * 0.15);
     p.sp.visible = true;
@@ -237,7 +238,7 @@ export class Life {
       const t = 1 - p.life / p.max;
       p.sp.position.x += p.vx * dt; p.sp.position.z += p.vz * dt; p.sp.position.y += (0.35 + t * 0.2) * dt;
       p.sp.scale.setScalar(p.size * (0.5 + t * 1.6));
-      p.sp.material.opacity = Math.sin(Math.PI * t) * 0.32;
+      p.sp.material.opacity = Math.sin(Math.PI * t) * p.alpha;
       if (p.life <= 0) p.sp.visible = false;
     }
     const a = this.dust.geometry.attributes.position;

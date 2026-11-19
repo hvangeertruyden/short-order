@@ -42,6 +42,12 @@ export function createPost(renderer, scene, camera) {
   ao.blendIntensity = 0.85;
   ao.updateGtaoMaterial({ radius: 0.45, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 12 });
   ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
+  // the AO pass draws everything as solid depth: keep soft see-through things (steam, glows) out of it
+  const baseHide = ao.overrideVisibility.bind(ao);
+  ao.overrideVisibility = function () {
+    baseHide();
+    this.scene.traverse((o) => { if (o.visible && (o.isSprite || (o.material && !Array.isArray(o.material) && o.material.transparent && !o.material.depthWrite))) o.visible = false; });
+  };
   composer.addPass(ao);
   const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.5, 0.5, 2.5);   // only real light sources (neon, lamps) glow
   composer.addPass(bloom);
