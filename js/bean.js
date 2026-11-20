@@ -63,11 +63,17 @@ export function jellyPerson({ color, hat = null, kind = 'customer', role = null,
     const crown = ball(0.15, WHITE, 1, 0.8, 1); crown.position.y = 0.22; top.add(crown);
     const apron = new THREE.Mesh(new THREE.CylinderGeometry(0.352, 0.356, 0.3, 30, 1, true, Math.PI * 0.62, Math.PI * 0.76), WHITE); apron.position.y = 0.13 + 0.2; rig.add(apron);
   } else if (role === 'server') {
-    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.19, 0.09, 4, 1), WHITE); cap.rotation.y = Math.PI / 4; cap.scale.set(1.25, 1, 0.55); cap.position.y = 0.01; top.add(cap);
-    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.172, 0.192, 0.025, 4, 1), RED); stripe.rotation.y = Math.PI / 4; stripe.scale.set(1.26, 1, 0.56); stripe.position.y = 0.0; top.add(stripe);
-    const bow = new THREE.Group(); bow.position.set(0, 0.13 + 0.42, -0.34); rig.add(bow);
-    for (const s of [-1, 1]) { const w = ball(0.045, RED, 1.2, 0.8, 0.5); w.position.x = s * 0.05; bow.add(w); }
-    bow.add(ball(0.022, RED));
+    // a chunky folded soda-jerk cap (white with a red band and a little star), sitting a bit forward
+    const cap = new THREE.Group(); cap.position.set(0, -0.03, -0.02); cap.rotation.x = -0.12; top.add(cap);
+    const crown = ball(0.23, WHITE, 1, 0.55, 0.6); crown.position.y = 0.06; cap.add(crown);                        // soft folded paper dome
+    const ridge = ball(0.2, WHITE, 1, 0.22, 0.12); ridge.position.y = 0.15; cap.add(ridge);                         // the fold along the top
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.235, 0.235, 0.05, 28), RED); band.scale.z = 0.62; band.position.y = 0.035; band.castShadow = true; cap.add(band);
+    const star = ball(0.04, mat(0xFFC83D, 0.5), 1, 1, 0.4); star.position.set(0, 0.08, -0.14); cap.add(star);
+    // small bow tie low on the chest, plus a red half-apron
+    const bow = new THREE.Group(); bow.position.set(0, 0.13 + 0.3, -0.335); rig.add(bow);
+    for (const s of [-1, 1]) { const w = ball(0.032, RED, 1.15, 0.8, 0.45); w.position.x = s * 0.036; bow.add(w); }
+    bow.add(ball(0.016, RED));
+    const apron = new THREE.Mesh(new THREE.CylinderGeometry(0.352, 0.356, 0.24, 30, 1, true, Math.PI * 0.62, Math.PI * 0.76), RED); apron.position.y = 0.13 + 0.17; rig.add(apron);
   } else if (kind === 'inspector') {
     const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.02, 26), GREY); top.add(brim);
     const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.15, 22), GREY); crown.position.y = 0.08; top.add(crown);
