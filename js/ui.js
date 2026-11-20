@@ -117,7 +117,7 @@ export class UI {
 
   renderMenu(menu, far) {
     const el = $('#menu');
-    if (!menu) { el.classList.add('hidden'); this.menuSig = ''; this.currentActions = []; return; }
+    if (!menu) { el.classList.add('hidden'); this.menuSig = ''; this.currentActions = []; this.actionKeys = {}; return; }
     const sig = JSON.stringify([menu.key, menu.title, menu.info, menu.actions.map((a) => [a.label, a.disabled, a.why]), far]);
     if (sig === this.menuSig) return;
     this.menuSig = sig;
@@ -128,12 +128,17 @@ export class UI {
     const box = $('.m-actions', el);
     box.innerHTML = '';
     this.currentActions = far ? [] : menu.actions;
+    // E for the main action, then F, Z, X for the rest (in order)
+    const primary = menu.actions.findIndex((x) => !x.disabled && x.a);
+    const spare = ['F', 'Z', 'X'];
+    this.actionKeys = {};
+    const keyOf = menu.actions.map((a, i) => (i === primary ? 'E' : spare.shift() || ''));
+    keyOf.forEach((k, i) => { if (k) this.actionKeys[k] = menu.actions[i]; });
     menu.actions.forEach((a, i) => {
       const b = document.createElement('button');
       b.disabled = a.disabled || far || !a.a;
-      const first = i === menu.actions.findIndex((x) => !x.disabled && x.a);
-      b.className = first ? 'primary' : '';
-      b.innerHTML = `<span class="key">${first ? 'E' : i + 1}</span><span class="lbl">${esc(a.label)}</span>`;
+      b.className = i === primary ? 'primary' : '';
+      b.innerHTML = `${keyOf[i] ? `<span class="key">${keyOf[i]}</span>` : '<span class="key blank"></span>'}<span class="lbl">${esc(a.label)}</span>`;
       b.addEventListener('click', (e) => { e.stopPropagation(); if (!b.disabled) this.onAction(a.a); });
       box.appendChild(b);
     });

@@ -225,3 +225,4 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #1B1B1B; col
 #menu .m-actions button:disabled { opacity: .4; cursor: default; }
 #menu .key { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #FFF3D6; color: #1E2E56; font: 800 16px Bungee, sans-serif; border: 3px solid #121C36; box-shadow: 0 3px 0 #121C36; }
 #menu .primary .key { width: 44px; height: 44px; font-size: 20px; background: #FFC83D; }
+#menu .key.blank { background: transparent; border-color: transparent; box-shadow: none; }

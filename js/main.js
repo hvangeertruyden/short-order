@@ -293,6 +293,8 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyN') { audio.setMusicEnabled(!audio.musicEnabled()); ui.localToast(audio.musicEnabled() ? '🎵 Diner radio on' : '🎵 Diner radio off'); return; }
   if (e.code === 'KeyM') { G.muted = !G.muted; audio.setVolume(G.muted ? 0 : 0.35); ui.localToast(G.muted ? '🔇 Muted' : '🔊 Sound on'); return; }
   if (e.code === 'Space' || e.code === 'KeyE') { e.preventDefault(); const a = ui.currentActions.find((x) => !x.disabled && x.a); if (a) act(a.a); else audio.play('deny'); return; }
+  const km = /^Key([FZX])$/.exec(e.code);
+  if (km) { const a = ui.actionKeys?.[km[1]]; if (a && !a.disabled && a.a) act(a.a); else audio.play('deny'); return; }
   const m = /^Digit([1-9])$/.exec(e.code);
   if (m) { const a = ui.currentActions[Number(m[1]) - 1]; if (a && !a.disabled && a.a) act(a.a); else audio.play('deny'); }
 });
