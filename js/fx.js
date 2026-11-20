@@ -40,8 +40,8 @@ export function createPost(renderer, scene, camera) {
   const ao = new GTAOPass(scene, camera, size.x, size.y);
   ao.output = GTAOPass.OUTPUT.Default;
   ao.blendIntensity = 0.85;
-  ao.updateGtaoMaterial({ radius: 0.45, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 12 });
-  ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
+  ao.updateGtaoMaterial({ radius: 0.45, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 8 });
+  ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 8 });
   // the AO pass draws everything as solid depth: keep soft see-through things (steam, glows) out of it
   const baseHide = ao.overrideVisibility.bind(ao);
   ao.overrideVisibility = function () {
@@ -56,6 +56,7 @@ export function createPost(renderer, scene, camera) {
   composer.addPass(grade);
 
   let quality = 2;
+  queueMicrotask(() => api.setQuality(quality));
   const frames = [];
   let lastChange = performance.now();
   const api = {
@@ -64,6 +65,9 @@ export function createPost(renderer, scene, camera) {
     setQuality(q) {
       quality = Math.max(0, Math.min(2, q));
       ao.enabled = quality >= 2;
+      // render resolution: Retina screens get a little extra sharpness on high, plain 1x otherwise
+      const pr = quality >= 2 ? Math.min(1.25, window.devicePixelRatio) : 1;
+      if (renderer.getPixelRatio() !== pr) { renderer.setPixelRatio(pr); const sz = renderer.getSize(new THREE.Vector2()); api.setSize(sz.x, sz.y); }
       lastChange = performance.now();
       frames.length = 0;
     },
@@ -79,7 +83,7 @@ export function createPost(renderer, scene, camera) {
         if (frames.length > 90) frames.shift();
         if (frames.length === 90 && quality > 0 && performance.now() - lastChange > 4000) {
           const avg = frames.reduce((a, b) => a + b, 0) / frames.length;
-          if (avg > 28) { api.setQuality(quality - 1); api.onAutoDrop?.(quality); }
+          if (avg > 24) { api.setQuality(quality - 1); api.onAutoDrop?.(quality); }
         }
       }
     },

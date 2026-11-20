@@ -4,7 +4,6 @@
 // ---------------------------------------------------------------------------
 import * as THREE from 'three';
 import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import { PALETTE as C, L, TABLES, TUNING } from './data.js';
 import { seatOf, receiptById } from './sim.js';
 import { zoneOf } from './actions.js';
@@ -56,10 +55,9 @@ export class World {
   }
 
   buildLights() {
-    RectAreaLightUniformsLib.init();
     this.indoor = [];                       // lights that die in a power cut: [light, base intensity]
     const indoor = (light, base) => { light.intensity = base; this.indoor.push([light, base]); this.scene.add(light); if (light.target) this.scene.add(light.target); return light; };
-    this.hemi = new THREE.HemisphereLight(0xFFE9CC, 0x6B5444, 0.32);
+    this.hemi = new THREE.HemisphereLight(0xFFE9CC, 0x6B5444, 0.42);
     this.scene.add(this.hemi);
     // daylight pouring in through the front windows (the walls block it everywhere else)
     this.sun = new THREE.DirectionalLight(0xFFE2B8, 2.6);
@@ -70,22 +68,16 @@ export class World {
     Object.assign(this.sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12, near: 1, far: 50 });
     this.sun.shadow.bias = -0.0004; this.sun.shadow.normalBias = 0.035;
     this.scene.add(this.sun, this.sun.target);
-    // soft cool fill from each window
-    for (const [x, z] of [...L.windows.map((x) => [x, 8.84]), ...L.cutWindows.map((x) => [x, L.cut.z - 0.21])]) { const r = new THREE.RectAreaLight(0xCFE6FF, 2.2, 2.0, 1.4); r.position.set(x, 1.6, z); r.lookAt(x, 1.6, z - 5); this.scene.add(r); }
     // warm pools under every pendant lamp
     for (const t of TABLES) { const sp = new THREE.SpotLight(0xFFCF8F, 0, 4.6, 0.95, 0.75, 1.3); sp.position.set(t.x, L.ceiling - 1.36, t.z); sp.target.position.set(t.x, 0.7, t.z); indoor(sp, 3.2); }
     // the order counter and the host stand
     for (const [x, z] of [[-5.6, 0.9], [-2.6, 0.9], [1.75, 8.4]]) { const sp = new THREE.SpotLight(0xFFE0B0, 0, 4.2, 0.8, 0.7, 1.3); sp.position.set(x, 2.9, z + 0.5); sp.target.position.set(x, 0.9, z); indoor(sp, 12); }
     // general room light, lower than before so the pools read
     this.dLight = indoor(new THREE.PointLight(0xFFE3C2, 0, 12, 1.6), 3.2); this.dLight.position.set(0, 2.4, 4.0);
-    // neon glows
-    this.neonGlow = indoor(new THREE.PointLight(0xFF3A6E, 0, 5, 1.6), 4.5); this.neonGlow.position.set(-4.9, 2.5, L.cut.z - 0.6);
-    this.eatGlow = indoor(new THREE.PointLight(0xFF4A4A, 0, 4.5, 1.6), 4); this.eatGlow.position.set(7.5, 2.3, 1.4);
-    this.jukeGlowL = indoor(new THREE.PointLight(0xFFB040, 0, 3.2, 1.6), 3); this.jukeGlowL.position.set(L.jukebox.x, 1.2, L.jukebox.z + 0.6);
+    // (neon signs glow through bloom alone: real lights for them cost too much)
     // kitchen: cool fluorescents overhead, warm work lights under the hood
     this.kLight = indoor(new THREE.PointLight(0xF6F1E2, 0, 9, 1.6), 2.2); this.kLight.position.set(-2.6, 2.3, -4.4);
-    this.kLight2 = indoor(new THREE.PointLight(0xF6F1E2, 0, 7, 1.6), 1.4); this.kLight2.position.set(1.4, 2.3, -4.4);
-    for (const x of [-4.6, -2.2]) { const sp = new THREE.SpotLight(0xFFD9A0, 0, 3.2, 0.95, 0.6, 1.3); sp.position.set(x, 2.05, -6.45); sp.target.position.set(x, 0.9, -6.5); indoor(sp, 10); }
+    for (const x of [-3.6]) { const sp = new THREE.SpotLight(0xFFD9A0, 0, 4.2, 1.2, 0.7, 1.3); sp.position.set(x, 2.05, -6.3); sp.target.position.set(x, 0.9, -6.5); indoor(sp, 14); }
     this.fireLight = new THREE.PointLight(C.orange, 0, 6);
     this.scene.add(this.fireLight);
   }
@@ -841,7 +833,7 @@ export class World {
 
   updateEnvironment(s, time) {
     const dim = !s.power;
-    this.hemi.intensity = dim ? 0.12 : 0.32;
+    this.hemi.intensity = dim ? 0.12 : 0.42;
     // indoor lights die with the power (the daylight doesn't); the kitchen fluorescent stutters now and then
     const stutter = Math.sin(time * 0.7) > 0.985 ? (Math.random() < 0.5 ? 0.15 : 1) : 1;
     for (const [l, base] of this.indoor) l.intensity = dim ? 0 : base * (l === this.kLight ? stutter : 1);

@@ -26,13 +26,14 @@ const other = (r) => (r === 'cook' ? 'server' : 'cook');
 
 // ---- renderer / scene ----------------------------------------------------
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+renderer.setPixelRatio(1);   // fx.js picks the real ratio per graphics quality
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+renderer.shadowMap.autoUpdate = false;   // re-rendered a few times a second (see loop), not every frame
 $('#game').appendChild(renderer.domElement);
 const labels = new CSS2DRenderer({ element: $('#labels') });
 labels.setSize(window.innerWidth, window.innerHeight);
@@ -332,7 +333,15 @@ function setHighlight(obj) {
 // ---- main loop ---------------------------------------------------------------
 let last = performance.now(), time = 0;
 const PERF = { step: 0, render: 0, labels: 0, frames: 0 };
+// capped at 60 fps (120 Hz screens would otherwise draw everything twice as often for nothing),
+// 30 fps on the lobby screen, and shadows only refresh every few frames
+let lastDraw = 0, frameNo = 0;
 function loop(now) {
+  requestAnimationFrame(loop);
+  const minGap = G.state ? 1000 / 60 - 1.5 : 1000 / 30 - 1.5;
+  if (now - lastDraw < minGap) return;
+  lastDraw = now;
+  if (++frameNo % 3 === 0) renderer.shadowMap.needsUpdate = true;
   const rawMs = now - last;
   const dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt;
   const p0 = performance.now();
@@ -344,7 +353,6 @@ function loop(now) {
   labels.render(scene, camera);
   const p3 = performance.now();
   PERF.step += p1 - p0; PERF.render += p2 - p1; PERF.labels += p3 - p2; PERF.frames++;
-  requestAnimationFrame(loop);
 }
 
 function idleCamera() {
@@ -474,5 +482,5 @@ window.__G = G; // handy for debugging in the console
 window.__dbg = {
   PERF, renderer, scene, world, camera, controls, post, act: (a) => act(a),
   // advance the game by hand (for inspecting animation frame by frame)
-  advance(seconds, fps = 60) { const dt = 1 / fps; for (let t = 0; t < seconds; t += dt) { time += dt; if (G.state) step(dt); } post.render(0); labels.render(scene, camera); },
+  advance(seconds, fps = 60) { const dt = 1 / fps; for (let t = 0; t < seconds; t += dt) { time += dt; if (G.state) step(dt); } renderer.shadowMap.needsUpdate = true; post.render(0); labels.render(scene, camera); },
 };

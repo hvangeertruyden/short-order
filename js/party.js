@@ -217,7 +217,8 @@ export function installParty(Sim) {
       }
       if (!c.path.length) {
         if (c.seat && (c.st === 'waitFood' || c.st === 'seated' || c.st === 'eating')) c.yaw = c.seat.yaw;
-        if (c.st === 'line' || c.st === 'pay' || c.st === 'waitDrink') c.yaw = Math.PI / 2;
+        if (c.st === 'line' || c.st === 'waitDrink') c.yaw = 0;          // facing the lunch counter
+        if (c.st === 'pay') c.yaw = Math.PI / 2;                            // facing the register stand
       }
 
       // outings: done staying somewhere?

@@ -59,6 +59,7 @@ function foodStatus(it, at) {
   return lines;
 }
 
+const birthdayDue = (s) => s.customers.some((c) => c.birthday?.promised && !c.birthday.cake);
 function fireActions(s, P) {
   const out = [];
   if (P.held?.type === 'ext') out.push(A('🧯 SPRAY IT!', { type: 'spray' }));
@@ -106,7 +107,6 @@ function stationMenu(s, role, P, at, i) {
   }
 
   info.push(...foodStatus(it, at));
-  if ((it.kind === 'pancakes' || it.kind === 'milkshake') && isDone(it) && !it.candle) actions.push(A('🕯️ Stick a candle in it', { type: 'candle', at, i }));
   if (it.candle) info.push('🕯️ with a candle');
   // combining at the prep counter
   if (at === 'prep' && h?.type === 'food') {
@@ -120,6 +120,8 @@ function stationMenu(s, role, P, at, i) {
   const st = curStep(it);
   const lift = at === 'toaster' ? 'Lift it out' : at === 'blender' ? 'Take the cup' : at === 'fryer' ? 'Take the basket out' : 'Pick it up';
   actions.push(A(lift, { type: 'take', at, i }, !!h));
+  // candles only come out when somebody's birthday treat is on order (and never as the first option)
+  if (birthdayDue(s) && (it.kind === 'pancakes' || it.kind === 'milkshake') && isDone(it) && !it.candle) actions.push(A('🕯️ Stick a candle in it', { type: 'candle', at, i }));
   return { title, info, actions };
 }
 
@@ -222,9 +224,9 @@ export function getMenu(s, role, key) {
         else if (!tr) actions.push(A('Set plate here', { type: 'trayPut', i: id }, h?.type !== 'plate', 'Hold a plate'));
         else {
           if (h?.type === 'food') actions.push(A('🍽️ Put it on this plate', { type: 'plateFood', at: 'tray', i: id }, !isMenuItem(h) || tr.plate.items.length >= T.plateCapacity, !isMenuItem(h) ? 'Not a finished dish' : 'Plate is full'));
-          if (tr.plate.items.some((f) => (f.kind === 'pancakes' || f.kind === 'milkshake') && !f.candle)) actions.push(A('🕯️ Add a candle', { type: 'candle', at: 'tray', i: id }));
           actions.push(A('🧾 Attach receipt', { type: 'attachReceipt', i: id }, !P.receipt || !!tr.receiptId, tr.receiptId ? 'Already has one' : 'Not holding a receipt'));
           actions.push(A('Take plate back', { type: 'trayTake', i: id }, !!h || (tr.receiptId && !!P.receipt), handsFull(P) || 'Hands full of receipt'));
+          if (birthdayDue(s) && tr.plate.items.some((f) => (f.kind === 'pancakes' || f.kind === 'milkshake') && !f.candle)) actions.push(A('🕯️ Add a candle', { type: 'candle', at: 'tray', i: id }));
         }
       } else {
         if (!tr) actions.push(A('Put tray back', { type: 'trayPut', i: id }, h?.type !== 'tray', 'Not holding a tray'));

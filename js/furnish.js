@@ -114,7 +114,7 @@ export async function furnish(world, colliders) {
   tasks.push(loadModel('kitchenprops').then((pack) => {
     const backZ = -7.0;
     const placeUnit = (name, x, w, hide = []) => {
-      const m = fit(finish(unit(pack, name), { hide }), { w });
+      const m = fit(finish(unit(pack, name), { hide, shadow: false }), { w });
       m.position.set(x, 0, backZ + m.userData.size.z / 2);
       S.add(m);
       // stretch the height so the cooking surface lines up with the counter top the food sits on
@@ -141,7 +141,7 @@ export async function furnish(world, colliders) {
     for (const sx of [-0.375, 0.375]) {
       const raw = unit(pack, 'Fridge');
       closeDoor(raw);
-      const m = fit(finish(raw), { w: 0.75, h: 2.1, uniform: false });
+      const m = fit(finish(raw, { shadow: false }), { w: 0.75, h: 2.1, uniform: false });
       m.position.x = sx; fz.add(m);
     }
     fz.position.set(0, 0, -0.03);
@@ -151,7 +151,7 @@ export async function furnish(world, colliders) {
 
   // ---- a proper retro fridge (its maker's badge removed) ----
   tasks.push(loadModel('fridge').then((src) => {
-    const m = fit(finish(src.clone(true), { hide: ['Text'] }), { rotY: Math.PI / 2, h: 1.8 });
+    const m = fit(finish(src.clone(true), { hide: ['Text'], shadow: false }), { rotY: Math.PI / 2, h: 1.8 });
     m.position.x = -8.0 - L.fridge.x + m.userData.size.x / 2;   // back against the wall
     V.fridgeGroup.add(m);
     hideAll([V.fridge]);
@@ -194,6 +194,10 @@ export async function furnish(world, colliders) {
   }));
 
   const results = await Promise.allSettled(tasks);
+  // the sun only reaches the dining room: nothing in the kitchen needs to cast a shadow
+  const v = new THREE.Vector3();
+  S.updateMatrixWorld(true);
+  S.traverse((o) => { if (o.isMesh && o.castShadow && o.getWorldPosition(v).z < L.wallZ - 0.3) o.castShadow = false; });
   results.forEach((r) => { if (r.status === 'rejected') console.warn('furnish:', r.reason); });
 }
 
