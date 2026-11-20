@@ -329,10 +329,7 @@ export function getMenu(s, role, key) {
         tag: '', outing: c.outing?.kind === 'restroom' ? 'In the restroom' : 'Wandering', inspect: '',
       }[c.st] || '';
       info.push([st, c.leader ? `with ${l?.name}` : size > 1 ? `party of ${size}` : '', mood].filter(Boolean).join(' · '));
-      if (c.st === 'line' && front) {
-        actions.push(A('📝 Take order', { type: 'takeOrder', cid: c.id }));
-        actions.push(A('🧾 Ring it up', { type: 'ringUp', cid: c.id }, !c.heard || !registerUp(s) || freeTableFor(s, size) == null));
-      }
+      if (c.st === 'line' && front) actions.push(A('🧾 Take their order', { type: 'openPOS', cid: c.id }, !registerUp(s) || freeTableFor(s, size) == null));
       if (l && l.st !== 'waitDrink' && drinkOf(h) && (l.topic?.kind === 'melt' || l.refills?.want)) actions.push(A(l.refills?.want ? `${l.refills.kind === 'coffee' ? '☕' : '🥤'} Refill` : '🥤 On the house', { type: 'giveDrink', cid: c.id }, l.refills?.want && drinkOf(h) !== l.refills.kind));
       if (l?.st === 'waitDrink') {
         const d = drinkOf(h);
@@ -410,7 +407,11 @@ export function getMenu(s, role, key) {
     }
     case 'register': case 'payreg': {
       title = kind === 'register' ? 'Order register' : 'Pay register';
-      if (kind === 'register') for (const c of s.customers) if (c.remake && c.table) actions.push(A(`🧾 Re-send table ${c.table}'s order`, { type: 'resend', n: c.table }, !registerUp(s)));
+      if (kind === 'register') {
+        const f = custById(s, s.orderLine[0]);
+        if (f && f.st === 'line') actions.push(A('🧾 Take the next order', { type: 'openPOS', cid: f.id }, !registerUp(s)));
+        for (const c of s.customers) if (c.remake && c.table) actions.push(A(`🧾 Re-send table ${c.table}'s order`, { type: 'resend', n: c.table }, !registerUp(s)));
+      }
       break;
     }
     case 'tents': {

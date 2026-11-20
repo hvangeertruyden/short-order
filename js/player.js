@@ -38,7 +38,14 @@ export class Controls {
       if (this.down && !this.down.dragging && e.button === 0) this.onClick?.();
       this.down = null; canvas.style.cursor = 'default';
     });
-    canvas.addEventListener('pointerleave', () => { this.mouse.inside = false; });
+    // track the mouse over the whole window: hovering the action prompt (or a label) must not count as
+    // "left the game", or the prompt hides, the mouse is back over the game, it shows... flicker
+    window.addEventListener('pointermove', (e) => {
+      this.mouse.overUI = !!e.target.closest?.('#menu');
+      if (e.target === canvas || this.mouse.overUI || e.target.closest?.('#labels')) this.setMouse(e);
+      else this.mouse.inside = false;
+    });
+    document.addEventListener('pointerleave', () => { this.mouse.inside = false; });
   }
 
   setMouse(e) {

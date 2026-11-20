@@ -7,28 +7,28 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Fredoka:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=37024a16d8">
+  <link rel="stylesheet" href="css/style.css?v=560c642cb3">
   <script type="importmap">
     { "imports": {
         "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
         "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-        "./js/actions.js": "./js/actions.js?v=37024a16d8",
-        "./js/audio.js": "./js/audio.js?v=37024a16d8",
-        "./js/bean.js": "./js/bean.js?v=37024a16d8",
-        "./js/data.js": "./js/data.js?v=37024a16d8",
-        "./js/decor.js": "./js/decor.js?v=37024a16d8",
-        "./js/fx.js": "./js/fx.js?v=37024a16d8",
-        "./js/incidents.js": "./js/incidents.js?v=37024a16d8",
-        "./js/jelly.js": "./js/jelly.js?v=37024a16d8",
-        "./js/kitchen.js": "./js/kitchen.js?v=37024a16d8",
-        "./js/main.js": "./js/main.js?v=37024a16d8",
-        "./js/models.js": "./js/models.js?v=37024a16d8",
-        "./js/net.js": "./js/net.js?v=37024a16d8",
-        "./js/party.js": "./js/party.js?v=37024a16d8",
-        "./js/player.js": "./js/player.js?v=37024a16d8",
-        "./js/sim.js": "./js/sim.js?v=37024a16d8",
-        "./js/ui.js": "./js/ui.js?v=37024a16d8",
-        "./js/world.js": "./js/world.js?v=37024a16d8"
+        "./js/actions.js": "./js/actions.js?v=560c642cb3",
+        "./js/audio.js": "./js/audio.js?v=560c642cb3",
+        "./js/bean.js": "./js/bean.js?v=560c642cb3",
+        "./js/data.js": "./js/data.js?v=560c642cb3",
+        "./js/decor.js": "./js/decor.js?v=560c642cb3",
+        "./js/fx.js": "./js/fx.js?v=560c642cb3",
+        "./js/incidents.js": "./js/incidents.js?v=560c642cb3",
+        "./js/jelly.js": "./js/jelly.js?v=560c642cb3",
+        "./js/kitchen.js": "./js/kitchen.js?v=560c642cb3",
+        "./js/main.js": "./js/main.js?v=560c642cb3",
+        "./js/models.js": "./js/models.js?v=560c642cb3",
+        "./js/net.js": "./js/net.js?v=560c642cb3",
+        "./js/party.js": "./js/party.js?v=560c642cb3",
+        "./js/player.js": "./js/player.js?v=560c642cb3",
+        "./js/sim.js": "./js/sim.js?v=560c642cb3",
+        "./js/ui.js": "./js/ui.js?v=560c642cb3",
+        "./js/world.js": "./js/world.js?v=560c642cb3"
     } }
   </script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -74,6 +74,7 @@
     <button id="end-shift" class="btn ghost hidden">End practice</button>
     <div id="vignette"></div>
     <div id="kds" class="hidden"></div>
+    <div id="pos" class="hidden"></div>
     <div id="batter" class="hidden"><i></i><i></i><i></i><i></i><i></i><i></i></div>
   </div>
 
@@ -92,7 +93,7 @@
         </div>
         <div>
           <h3>The loop</h3>
-          <p><b>Server:</b> take the order at the counter → ring it up (they get a number tent) → make their drink (soda: cup → ice → fill → lid; coffee: mug → brew) → deliver the tray to the table on the receipt → take payment → clear the table → drop dishes at the pass.</p>
+          <p><b>Server:</b> press E on the customer at the counter → punch what they say into the register and ring it up (they get a number tent) → make their drink (soda: cup → ice → fill → lid; coffee: mug → brew) → deliver the tray to the table on the receipt → take payment → clear the table → drop dishes at the pass.</p>
           <p><b>Cook:</b> print tickets (the order screen is in the corner) → grab the receipt → take ingredients from the fridge, freezer &amp; bread box → cook them step by step (flip! stir! lift!) → finish at the prep counter → plate on the pass with the receipt → ring the bell → wash dishes.</p>
           <p>Dirty plates make people sick. Noise means nobody can hear the server. <b>Talk to each other.</b></p>
         </div>
@@ -168,6 +169,6 @@
     <div class="card"><h2>Connection lost</h2><p id="dc-msg"></p><button class="btn" id="btn-dc">Back to menu</button></div>
   </div>
 
-  <script type="module" src="js/main.js?v=37024a16d8"></script>
+  <script type="module" src="js/main.js?v=560c642cb3"></script>
 </body>
 </html>

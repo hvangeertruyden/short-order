@@ -9,7 +9,7 @@ import { newFood } from './kitchen.js';
 import { itemModel } from './models.js';
 import { SOURCES, RECIPES, MUSIC } from './data.js';
 import { World, heldModel, heldSig, receiptHeldModel, COLLIDERS } from './world.js';
-import { Sim, receiptById } from './sim.js';
+import { Sim, receiptById, custById } from './sim.js';
 import { getMenu, canTouch } from './actions.js';
 import { Controls, isTyping } from './player.js';
 import { UI } from './ui.js';
@@ -85,6 +85,7 @@ function act(a) {
   const k = G.target?.key?.split(':')[0];
   audio.play(APPLIANCES.has(k) && a.type !== 'openSource' ? 'beep' : 'menu');
   if (a.type === 'openSource') { openPantry(a.src); return; }
+  if (a.type === 'openPOS') { const c = G.state && custById(G.state, a.cid); if (c && !c.heard) act({ type: 'takeOrder', cid: a.cid }); ui.openPOS(a.cid); audio.play('register'); return; }
   if (G.mode === 'guest') G.net?.send({ k: 'act', a });
   else G.sim.apply(G.role, a);
 }
@@ -283,6 +284,7 @@ window.addEventListener('keydown', (e) => {
   audio.unlockAudio();
   if (isTyping() || !G.state || $('#hud').classList.contains('hidden')) return;
   if (ui.pantryOpen) { ui.pantryKey(e); return; }
+  if (ui.posOpen) { ui.posKey(e); return; }
   if (e.key === 'Enter') { e.preventDefault(); ui.focusStaffChat(); return; }
   if (e.code === 'KeyT') { if (ui.focusNpc()) e.preventDefault(); return; }
   if (e.code === 'Tab') { e.preventDefault(); swapSoloRole(); return; }
@@ -322,7 +324,8 @@ function pickHovered() {
     let o = h.object, iaObj = null, noHit = false, hidden = false;
     while (o) { if (!o.visible) hidden = true; if (o.userData.noHit) noHit = true; if (!iaObj && o.userData.ia) iaObj = o; o = o.parent; }
     if (hidden || noHit) continue;
-    if (h.object.material?.transparent && h.object.material.opacity < 0.6) continue;   // faded (see-through) things
+    const baseMat = h.object.userData.hlOrig || h.object.material;   // (judge by the real material, not the blue highlight)
+    if (baseMat?.transparent && baseMat.opacity < 0.6 && baseMat.visible !== false) continue;   // faded (see-through) things
     if (iaObj && !canTouch(G.role, iaObj.userData.ia)) continue;                      // the other side's stuff doesn't block you
     if (!iaObj) return null;                                   // something solid is in the way
     if (iaObj.userData.ia.startsWith('avatar')) continue;
@@ -386,7 +389,7 @@ function step(dt) {
   const playing = s.phase === 'playing';
   const P = s.players[G.role];
   const slipping = P.slipUntil && s.t < P.slipUntil;
-  const frozen = isTyping() || !!P.busy || !playing || !$('#help').classList.contains('hidden') || ui.pantryOpen || slipping;
+  const frozen = isTyping() || !!P.busy || !playing || !$('#help').classList.contains('hidden') || ui.pantryOpen || ui.posOpen || slipping;
   controls.update(dt, G.me, frozen);
 
   if (G.mode !== 'guest') {
@@ -416,7 +419,8 @@ function step(dt) {
 
   // what you're standing at
   // the prompt only shows for what the mouse is over; you have to be close enough to use it
-  const hov = pickHovered();
+  // (while the mouse is on the prompt itself, keep showing it so its buttons can be clicked)
+  const hov = controls.mouse.overUI && G.target ? world.iaObjs.get(G.target.key) : pickHovered();
   const hovKey = hov?.userData.ia && canTouch(G.role, hov.userData.ia) ? hov.userData.ia : null;
   if (hovKey !== (G.target?.key ?? null)) { G.target = hovKey ? { key: hovKey } : null; if (hovKey) audio.play('hover'); }
   let menu = null, far = false, tObj = null;

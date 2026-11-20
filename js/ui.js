@@ -113,18 +113,21 @@ export class UI {
     this.renderToasts(s, role);
     this.renderChat(s, role);
     this.renderNpc(s, role);
+    if (this.posOpen) this.renderPOS(s, role);
   }
 
   renderMenu(menu, far) {
     const el = $('#menu');
     if (!menu) { el.classList.add('hidden'); this.menuSig = ''; this.currentActions = []; this.actionKeys = {}; return; }
-    const sig = JSON.stringify([menu.key, menu.title, menu.info, menu.actions.map((a) => [a.label, a.disabled, a.why]), far]);
+    // live info (cooking %, etc.) updates in place; the buttons are only rebuilt when the choices change
+    const infoHtml = menu.info.map((t) => `<div>${esc(t)}</div>`).join('');
+    if (infoHtml !== this.menuInfo) { this.menuInfo = infoHtml; $('.m-info', el).innerHTML = infoHtml; }
+    const sig = JSON.stringify([menu.key, menu.title, menu.actions.map((a) => [a.label, a.disabled]), far]);
     if (sig === this.menuSig) return;
     this.menuSig = sig;
     el.classList.remove('hidden');
     el.classList.toggle('far', far);
     $('.m-title', el).textContent = menu.title;
-    $('.m-info', el).innerHTML = menu.info.map((t) => `<div>${esc(t)}</div>`).join('');
     const box = $('.m-actions', el);
     box.innerHTML = '';
     this.currentActions = far ? [] : menu.actions;
@@ -142,6 +145,84 @@ export class UI {
       b.addEventListener('click', (e) => { e.stopPropagation(); if (!b.disabled) this.onAction(a.a); });
       box.appendChild(b);
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // The POS: the server actually punches the order in from what the customer says.
+  // Whatever gets rung up is what prints in the kitchen.
+  // ---------------------------------------------------------------------------
+  openPOS(cid) {
+    this.posOpen = true;
+    this.pos = { cid, items: [], drinks: [], mod: null };
+    this.posSig = '';
+    $('#pos').classList.remove('hidden');
+  }
+  closePOS() { if (!this.posOpen) return; this.posOpen = false; $('#pos').classList.add('hidden'); this.pos = null; }
+  posKey(e) {
+    if (e.code === 'Escape') { e.preventDefault(); this.closePOS(); }
+    else if (e.code === 'Enter') { e.preventDefault(); this.posRing(); }
+  }
+  posRing() {
+    const P = this.pos; if (!P || !P.items.length) return;
+    this.onAction({ type: 'ringUp', cid: P.cid, items: P.items, drinks: P.drinks });
+    this.closePOS();
+  }
+  renderPOS(s, role) {
+    const P = this.pos, c = custById(s, P.cid);
+    if (role !== 'server' || !c || c.st !== 'line' || s.orderLine[0] !== c.id) { this.closePOS(); return; }
+    const noisy = s.noise.length > 0;
+    const said = !c.heard ? (noisy ? "WHAT?! I CAN'T HEAR YOU!" : '...') : c.orderLine || '';
+    const size = 1 + (c.members?.length || 0);
+    const regOk = s.power && s.t >= s.registerBootUntil;
+    const sig = JSON.stringify([c.id, said, c.heard, noisy, P, regOk]);
+    if (sig === this.posSig) return;
+    this.posSig = sig;
+    const el = $('#pos');
+    const kinds = Object.keys(MENU);
+    const itemLine = (it) => MENU[it.kind].name + (it.style ? ` (${it.style})` : '') + (it.toppings ? (it.toppings.length ? ` + ${it.toppings.join(', ')}` : ' (plain)') : '');
+    const mod = P.mod;
+    const modRow = !mod ? '' : `<div class="pos-mod"><span>${esc(MENU[mod.kind].name)}:</span>${MENU[mod.kind].styles
+      ? MENU[mod.kind].styles.map((st) => `<button class="pos-chip" data-pos="style:${st}">${esc(st)}</button>`).join('')
+      : MENU[mod.kind].toppings.map((tp) => `<button class="pos-chip ${mod.toppings.includes(tp) ? 'on' : ''}" data-pos="top:${tp}">${esc(tp)}</button>`).join('') + '<button class="pos-chip go" data-pos="addmod">Add burger</button>'}<button class="pos-chip ghost" data-pos="nomod">✕</button></div>`;
+    el.innerHTML = `
+      <div class="pos-card">
+        <div class="pos-head"><span class="pos-brand">SHORT ORDER · REGISTER</span><span class="pos-x" data-pos="close">✕</span></div>
+        <div class="pos-body">
+          <div class="pos-guest">
+            <div class="pos-name">${esc(c.name)}<small>${size > 1 ? `party of ${size}` : 'table for one'}</small></div>
+            <div class="pos-say ${noisy && !c.heard ? 'loud' : ''}">${esc(said)}</div>
+            ${!c.heard ? `<button class="btn" data-pos="ask">${noisy ? '📣 Ask again' : '👂 What can I get you?'}</button>` : `<button class="btn ghost" data-pos="ask">🔁 Say that again?</button>`}
+          </div>
+          <div class="pos-menu">
+            <div class="pos-grid">${kinds.map((k) => `<button class="pos-item" data-pos="add:${k}"><b>${esc(MENU[k].name)}</b><span>$${MENU[k].price}</span></button>`).join('')}</div>
+            ${modRow}
+            <div class="pos-drinks">${Object.keys(DRINKS).map((d) => `<button class="pos-item drink" data-pos="drink:${d}"><b>${d === 'coffee' ? '☕' : '🥤'} ${esc(DRINKS[d].name)}</b><span>$${DRINKS[d].price}</span></button>`).join('')}</div>
+          </div>
+          <div class="pos-ticket">
+            <div class="pos-tk-head">TICKET</div>
+            <div class="pos-lines">${P.items.map((it, i) => `<div class="pos-ln"><span>${esc(itemLine(it))}</span><i data-pos="del:${i}">✕</i></div>`).join('') || '<div class="pos-empty">tap the menu</div>'}
+              ${P.drinks.map((d, i) => `<div class="pos-ln drink"><span>${esc(DRINKS[d].name)}</span><i data-pos="deld:${i}">✕</i></div>`).join('')}</div>
+            <button class="btn big pos-ring" data-pos="ring" ${P.items.length && regOk && c.heard ? '' : 'disabled'}>🧾 Ring it up <span class="kbd">Enter</span></button>
+          </div>
+        </div>
+      </div>`;
+    el.querySelectorAll('[data-pos]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); this.posClick(b.dataset.pos); }));
+  }
+  posClick(cmd) {
+    const P = this.pos; if (!P) return;
+    const [k, v] = cmd.split(':');
+    if (k === 'close') return this.closePOS();
+    if (k === 'ring') return this.posRing();
+    if (k === 'ask') { this.onAction({ type: 'takeOrder', cid: P.cid }); return; }
+    if (k === 'add') { const m = MENU[v]; if (m.styles || m.toppings) P.mod = { kind: v, toppings: [] }; else P.items.push({ kind: v }); }
+    if (k === 'style' && P.mod) { P.items.push({ kind: P.mod.kind, style: v }); P.mod = null; }
+    if (k === 'top' && P.mod) { const t = P.mod.toppings; const i = t.indexOf(v); if (i >= 0) t.splice(i, 1); else t.push(v); }
+    if (k === 'addmod' && P.mod) { P.items.push({ kind: P.mod.kind, toppings: P.mod.toppings.slice() }); P.mod = null; }
+    if (k === 'nomod') P.mod = null;
+    if (k === 'drink') P.drinks.push(v);
+    if (k === 'del') P.items.splice(Number(v), 1);
+    if (k === 'deld') P.drinks.splice(Number(v), 1);
+    this.posSig = '';
   }
 
   // float the prompt beside whatever you're standing at (like a game's "press E" prompt)
@@ -234,9 +315,7 @@ export class UI {
     const q = $('.npc-quick', el);
     q.innerHTML = '';
     const btn = (label, fn, primary = false, disabled = false) => { const b = document.createElement('button'); b.textContent = label; b.className = primary ? 'primary' : ''; b.disabled = disabled; b.addEventListener('click', fn); q.appendChild(b); };
-    if (canRing) {
-      btn(c.heard ? '🧾 Ring it up' : '📝 Take order', () => this.onAction(c.heard ? { type: 'ringUp', cid: c.id } : { type: 'takeOrder', cid: c.id }), true);
-    }
+    if (canRing) btn('🧾 Take their order', () => this.onAction({ type: 'openPOS', cid: c.id }), true);
     // replies depend on what's going on with this customer (see incidents.js → npcChoices)
     for (const o of s.npc.choices || []) btn(o.label, () => this.onAction({ type: 'npcChoice', cid: c.id, choice: o.id }), false);
   }

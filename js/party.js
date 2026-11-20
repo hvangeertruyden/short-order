@@ -39,6 +39,18 @@ function approachFor(seat) {
   return cands[0] || { x: seat.x, z: L.aisleZ[1] };
 }
 export const seatsOf = (n) => SEATS.get(n);
+// what came in from the POS: only real menu items, styles and toppings
+function sanitizeEntry(a) {
+  if (!Array.isArray(a.items)) return null;
+  const items = a.items.slice(0, 8).filter((it) => it && MENU[it.kind]).map((it) => {
+    const out = { kind: it.kind };
+    if (MENU[it.kind].styles) out.style = MENU[it.kind].styles.includes(it.style) ? it.style : MENU[it.kind].styles[0];
+    if (MENU[it.kind].toppings) out.toppings = (Array.isArray(it.toppings) ? it.toppings : []).filter((t) => MENU[it.kind].toppings.includes(t));
+    return out;
+  });
+  const drinks = (Array.isArray(a.drinks) ? a.drinks : []).filter((d) => DRINKS[d]).slice(0, 4);
+  return { items, drinks };
+}
 
 export function installParty(Sim) {
   const P_ = Sim.prototype, H = P_.handlers;
@@ -369,7 +381,10 @@ export function installParty(Sim) {
     s.tents = s.tents.filter((x) => x !== n);
     const tb = tableById(s, n);
     tb.cust = c.id; tb.tent = true;
-    const tk = { id: this.id(), cid: c.id, items: c.order.items.slice(), drinks: c.order.drinks.slice(), size: this.partySize(c), table: n, status: 'queued', t: s.t };
+    // the ticket is whatever the server rang up on the POS (mistakes and all); the customer still wants their real order
+    const entered = sanitizeEntry(a);
+    if (entered && !entered.items.length) return;
+    const tk = { id: this.id(), cid: c.id, items: entered ? entered.items : c.order.items.slice(), drinks: entered ? entered.drinks : c.order.drinks.slice(), size: this.partySize(c), table: n, status: 'queued', t: s.t };
     s.tickets.push(tk);
     c.table = n; c.ticket = tk.id;
     s.orderLine.shift();
