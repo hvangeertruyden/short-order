@@ -31,7 +31,9 @@ const col = (x0, z0, x1, z1) => COLLIDERS.push({ x0, z0, x1, z1 });
 const TOP = 0.92;
 let FLAME_TEX = null;
 // food and dishes are drawn oversized so you can read them from the top-down camera
-const big = (m, k = 1.5) => { m.scale.multiplyScalar(k); return m; };   // shared texture for fire sprites
+const big = (m, k = 1.5) => { m.scale.multiplyScalar(k); return m; };
+// the mouse looks straight through these to the station / counter underneath
+const noHit = (m) => { m.userData.noHit = true; return m; };   // shared texture for fire sprites
 
 export class World {
   constructor(scene) {
@@ -448,7 +450,7 @@ export class World {
       s.stations[at].forEach((it, i) => {
         if (!it) return;
         const a = this.stationPos(at, i);
-        const obj = this.ensure(`st:${at}:${i}`, this.itemSig(it), () => big(it.type === 'plate' ? Mo.plateModel(it) : Mo.itemModel(it)), a.parent || this.dynRoot);
+        const obj = this.ensure(`st:${at}:${i}`, this.itemSig(it), () => noHit(big(it.type === 'plate' ? Mo.plateModel(it) : Mo.itemModel(it))), a.parent || this.dynRoot);
         obj.position.set(a.x, a.y, a.z);
         if (at === 'toaster' && it.type === 'food') obj.rotation.set(Math.PI / 2, Math.PI / 2, 0);
         if (at === 'toaster') { const st = curStep(it); const down = st?.toaster && !it.popped; obj.position.y += down ? 0.06 : 0.16; }
@@ -567,11 +569,11 @@ export class World {
 
     // drink station: cup under the fountain, mug in the coffee machine
     if (s.fountain) {
-      const c = this.ensure('fountainCup', this.itemSig(s.fountain.cup), () => big(Mo.cupModel(s.fountain.cup), 1.3));
+      const c = this.ensure('fountainCup', this.itemSig(s.fountain.cup), () => noHit(big(Mo.cupModel(s.fountain.cup), 1.3)));
       c.position.set(L.soda.x + 0.08, 1.0, L.soda.z);
       if (s.fountain.pouring && s.power) { const st = this.ensure('stream', 'x', () => { const m = cyl(null, 0.008, 0.008, 0.25, Mo.paint(0x3A1A0E, 0.1), 0, 0, 0, 8); m.userData.noHit = true; return m; }); st.position.set(L.soda.x + 0.08, 1.18, L.soda.z); }
     }
-    if (s.coffeeM) { const m = this.ensure('coffeeMug', this.itemSig(s.coffeeM.mug), () => big(Mo.mugModel(s.coffeeM.mug), 1.3)); m.position.set(L.coffee.x + 0.06, 1.0, L.coffee.z); }
+    if (s.coffeeM) { const m = this.ensure('coffeeMug', this.itemSig(s.coffeeM.mug), () => noHit(big(Mo.mugModel(s.coffeeM.mug), 1.3))); m.position.set(L.coffee.x + 0.06, 1.0, L.coffee.z); }
 
     // puddles
     for (const p of s.puddles) {
@@ -614,7 +616,7 @@ export class World {
     // both players (yours uses your local position so it never lags)
     for (const r of ['cook', 'server']) {
       const p = r === myRole && this.mePose ? { ...s.players[r], ...this.mePose } : s.players[r];
-      const av = this.ensure(`avatar:${r}`, 'x', () => jellyPerson({ color: r === 'cook' ? 0xFFD36B : 0x7FD3E6, role: r, scale: 0.98 }));
+      const av = this.ensure(`avatar:${r}`, 'x', () => noHit(jellyPerson({ color: r === 'cook' ? 0xFFD36B : 0x7FD3E6, role: r, scale: 0.98 })));
       const slip = p.slipUntil && s.t < p.slipUntil ? 1 - (p.slipUntil - s.t) / 0.9 : 0;
       updateJelly(av, dt, time, { x: p.x, z: p.z, yaw: p.yaw, pose: p.held && p.held.type !== 'mop' ? 'carry' : 'idle', slip });
       if (p.held) {

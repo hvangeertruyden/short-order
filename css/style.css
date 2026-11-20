@@ -213,7 +213,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #1B1B1B; col
 /* proximity prompt: floats beside whatever you're standing at */
 #menu { left: 0; top: 0; bottom: auto; transform: none; min-width: 0; max-width: 300px; text-align: left; padding: 10px 12px 10px;
   background: rgba(30, 46, 86, 0.92); border: 3px solid #121C36; border-radius: 18px; box-shadow: 0 6px 0 rgba(10, 16, 32, .45); color: #fff;
-  transition: transform .08s linear; pointer-events: auto; }
+  pointer-events: auto; }
 #menu .m-title { font: 700 13px Fredoka, sans-serif; color: #A9C4F5; letter-spacing: .02em; margin: 0 0 2px 4px; text-transform: none; }
 #menu .m-info { font: 500 12px Fredoka, sans-serif; color: #D5E1F7; margin: 0 0 6px 4px; }
 #menu .m-info div { display: inline; }

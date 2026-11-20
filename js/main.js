@@ -306,37 +306,42 @@ controls.onClick = null;   // third person: you act on whatever you're standing 
 
 // ---- hover / highlight ---------------------------------------------------------
 const tmpV = new THREE.Vector3();
-// whatever you're standing next to and facing (third person, no mouse aiming)
-const REACH = 1.95;
-function pickNearest() {
-  const s = G.state, role = G.role;
-  const fx = -Math.sin(G.me.yaw), fz = -Math.cos(G.me.yaw);
-  let best = null, bestScore = Infinity;
-  for (const [key, obj] of world.iaObjs) {
-    if (!obj.parent || !canTouch(role, key)) continue;
-    let vis = true; for (let o = obj; o; o = o.parent) if (!o.visible) { vis = false; break; }
-    if (!vis) continue;
-    obj.getWorldPosition(tmpV);
-    const dx = tmpV.x - G.me.x, dz = tmpV.z - G.me.z, d = Math.hypot(dx, dz);
-    if (d > REACH) continue;
-    const facing = d > 0.05 ? (dx * fx + dz * fz) / d : 1;
-    if (facing < -0.1) continue;
-    let score = d * (1.7 - facing);
-    if (score >= bestScore) continue;
-    const menu = getMenu(s, role, key);
-    if (!menu) continue;
-    if (!menu.actions.some((x) => !x.disabled)) score *= 2.5;   // things you can't do anything with right now rank last
-    if (key.startsWith('cust:')) score *= 0.75;                  // people first
-    if (score < bestScore) { best = obj; bestScore = score; }
+// the thing under the mouse (hidden things on the other side of the wall don't count)
+const REACH = 2.1;
+function pickHovered() {
+  if (!controls.mouse.inside) return null;
+  raycaster.setFromCamera({ x: controls.mouse.nx, y: controls.mouse.ny }, camera);
+  raycaster.far = 60;
+  const hits = raycaster.intersectObjects([world.static, world.dynRoot], true);
+  for (const h of hits) {
+    let o = h.object, iaObj = null, noHit = false, hidden = false;
+    while (o) { if (!o.visible) hidden = true; if (o.userData.noHit) noHit = true; if (!iaObj && o.userData.ia) iaObj = o; o = o.parent; }
+    if (hidden || noHit) continue;
+    if (!iaObj && h.object.material?.transparent && h.object.material.opacity < 0.6) continue;
+    if (!iaObj) return null;                                   // something solid is in the way
+    if (iaObj.userData.ia.startsWith('avatar')) continue;
+    return iaObj;
   }
-  return best;
+  return null;
 }
 
+const HL_BOX = new THREE.MeshBasicMaterial({ color: 0x1A3C8C, transparent: true, opacity: 0.38, depthWrite: false });
 function setHighlight(obj) {
   if (G.hl === obj) return;
-  if (G.hl) G.hl.traverse((m) => { if (m.userData.hlOrig) { m.material.emissive.setHex(m.userData.hlOrig[0]); m.material.emissiveIntensity = m.userData.hlOrig[1]; delete m.userData.hlOrig; } });
+  if (G.hl) G.hl.traverse((m) => { if (m.userData.hlOrig) { m.material = m.userData.hlOrig; delete m.userData.hlOrig; } });
   G.hl = obj;
-  if (obj) obj.traverse((m) => { if (m.material?.emissive && !m.userData.hlOrig) { m.userData.hlOrig = [m.material.emissive.getHex(), m.material.emissiveIntensity]; m.material.emissive.setHex(0x1A3C8C); m.material.emissiveIntensity = 0.55; } });
+  if (!obj) return;
+  obj.traverse((m) => {
+    if (!m.isMesh || m.userData.hlOrig || m.userData.css) return;
+    const mat = m.material;
+    if (mat && mat.visible === false) { m.userData.hlOrig = mat; m.material = HL_BOX; return; }   // invisible hover box: show it in blue
+    if (!mat?.isMaterial || Array.isArray(mat)) return;
+    m.userData.hlOrig = mat;
+    const c = mat.clone();
+    if (c.color) c.color.lerp(new THREE.Color(0x1A3C8C), 0.6);
+    if (c.emissive) { c.emissive.setHex(0x14306E); c.emissiveIntensity = 0.6; }
+    m.material = c;
+  });
 }
 
 // ---- main loop ---------------------------------------------------------------
@@ -404,13 +409,19 @@ function step(dt) {
   world.update(s, G.role, dt, time);
 
   // what you're standing at
-  const near = pickNearest();
-  const nearKey = near?.userData.ia || null;
-  if (nearKey !== (G.target?.key ?? null)) { G.target = nearKey ? { key: nearKey } : null; if (nearKey) audio.play('hover'); }
+  // the prompt only shows for what the mouse is over; you have to be close enough to use it
+  const hov = pickHovered();
+  const hovKey = hov?.userData.ia && canTouch(G.role, hov.userData.ia) ? hov.userData.ia : null;
+  if (hovKey !== (G.target?.key ?? null)) { G.target = hovKey ? { key: hovKey } : null; if (hovKey) audio.play('hover'); }
   let menu = null, far = false, tObj = null;
-  if (G.target) { tObj = world.iaObjs.get(G.target.key); menu = tObj ? getMenu(s, G.role, G.target.key) : null; if (!menu) { G.target = null; tObj = null; } }
+  if (G.target) {
+    tObj = world.iaObjs.get(G.target.key) || hov;
+    menu = tObj ? getMenu(s, G.role, G.target.key) : null;
+    if (!menu) { G.target = null; tObj = null; }
+    else { tObj.getWorldPosition(tmpV); far = Math.hypot(tmpV.x - G.me.x, tmpV.z - G.me.z) > REACH; }
+  }
   G.far = far;
-  setHighlight(tObj && !far ? tObj : null);
+  setHighlight(tObj);
 
   // receipt you are holding (cook) or carrying on a tray (server)
   const myP = s.players[G.role];
