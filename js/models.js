@@ -71,7 +71,11 @@ export function lathe(parent, profile, m, x = 0, y = 0, z = 0, seg = 28) {
   mesh.position.set(x, y, z); mesh.castShadow = mesh.receiveShadow = true; parent?.add(mesh); return mesh;
 }
 export const grp = (parent, x = 0, y = 0, z = 0) => { const g = new THREE.Group(); g.position.set(x, y, z); parent?.add(g); return g; };
-export function knob(parent, x, y, z, m = M.black) { const k = cyl(parent, 0.028, 0.032, 0.03, m, x, y, z, 14); k.rotation.x = Math.PI / 2; cyl(k, 0.005, 0.005, 0.032, M.chrome, 0.018, 0.0, 0, 6); return k; }
+export function knob(parent, x, y, z, m = null) {   // big chunky dial with a white pointer
+  const k = cyl(parent, 0.045, 0.05, 0.05, m || paint(0xF0564E, 0.5), x, y, z, 18); k.rotation.x = Math.PI / 2;
+  rbox(k, 0.012, 0.012, 0.05, paint(0xFFFFFF, 0.5), 0, 0.045, 0.0, 0.004).position.set(0, 0.045, 0);
+  return k;
+}
 
 export function canvasTex(w, h, draw) {
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
@@ -351,25 +355,29 @@ export function tentModel(n) {
 // griddle: centred at its middle, sitting on the counter top. slots along x.
 export function griddleModel(width, slotX, cx) {
   const g = new THREE.Group();
-  rbox(g, width + 0.1, 0.1, 0.72, M.steel, 0, -0.1, 0, 0.01);                       // body lip
-  rbox(g, width, 0.04, 0.62, M.griddleTop, 0, 0, 0.01, 0.004);                       // cooking plate
-  rbox(g, width + 0.1, 0.24, 0.05, M.steel, 0, 0, -0.34, 0.01);                       // backsplash
-  rbox(g, 0.05, 0.12, 0.62, M.steel, -width / 2 - 0.03, 0, 0, 0.01); rbox(g, 0.05, 0.12, 0.62, M.steel, width / 2 + 0.03, 0, 0, 0.01);
-  rbox(g, width, 0.03, 0.06, M.darkSteel, 0, -0.01, 0.33, 0.01);                     // grease trough
-  slotX.forEach((x) => { knob(g, x - cx, -0.06, 0.37); });
-  const sp = grp(g, width / 2 - 0.15, 0.04, 0.24); rbox(sp, 0.09, 0.004, 0.07, M.steel, 0, 0, 0, 0.002); rbox(sp, 0.02, 0.012, 0.18, M.black, 0, 0, 0.12, 0.006); sp.rotation.y = 0.4; // spatula
+  const body = paint(0xDCE5EC, 0.55), trim = paint(0x9FDCCF, 0.6);
+  rbox(g, width + 0.16, 0.16, 0.78, body, 0, -0.16, 0, 0.06);                     // chunky bezel
+  rbox(g, width, 0.05, 0.62, M.griddleTop, 0, -0.01, 0.01, 0.02);                  // cooking plate (top at +0.04)
+  rbox(g, width + 0.16, 0.36, 0.1, body, 0, -0.02, -0.37, 0.05);                  // tall backsplash
+  rbox(g, width + 0.17, 0.05, 0.11, paint(0xF0564E, 0.55), 0, 0.22, -0.37, 0.025); // red stripe along the top
+  for (const sx of [-1, 1]) rbox(g, 0.08, 0.16, 0.7, body, sx * (width / 2 + 0.04), -0.02, 0, 0.035);   // side rails
+  rbox(g, width + 0.12, 0.14, 0.08, trim, 0, -0.17, 0.4, 0.04);                   // mint control strip
+  slotX.forEach((x) => knob(g, x - cx, -0.1, 0.45));
+  rbox(g, width - 0.1, 0.035, 0.07, M.darkSteel, 0, 0.0, 0.33, 0.017);            // grease trough
+  const sp = grp(g, width / 2 - 0.18, 0.045, 0.24); rbox(sp, 0.12, 0.008, 0.1, M.chrome, 0, 0, 0, 0.004); rbox(sp, 0.035, 0.03, 0.2, paint(0xF0564E, 0.5), 0, 0, 0.15, 0.014); sp.rotation.y = 0.4;
   return g;
 }
 export function fryerModel(slotX, cx) {
   const g = new THREE.Group();
-  // raised vat housing sitting on the counter, with the oil sunk inside
-  rbox(g, 1.42, 0.16, 0.72, M.steel, 0, 0, 0, 0.02);
-  rbox(g, 1.3, 0.02, 0.58, M.oil, 0, 0.11, 0, 0.004);                                 // oil surface
-  for (const [w, d, x, z] of [[1.42, 0.07, 0, 0.325], [1.42, 0.07, 0, -0.325], [0.07, 0.72, 0.675, 0], [0.07, 0.72, -0.675, 0], [0.05, 0.6, 0, 0]]) rbox(g, w, 0.05, d, M.steel, x, 0.15, z, 0.012);
-  rbox(g, 1.42, 0.34, 0.08, M.steel, 0, 0.15, -0.33, 0.015);                           // back panel
-  decal(g, 0.56, 0.12, (c, w, h) => { c.fillStyle = '#2A2A2E'; c.fillRect(0, 0, w, h); c.fillStyle = '#E7B23B'; c.font = 'bold 64px Bungee'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('FRY-O-MATIC', w / 2, h / 2 + 4); }, 0, 0.4, -0.288, 0, 512, 110);
-  slotX.forEach((x) => { knob(g, x - cx, 0.26, -0.285); });
-  for (const sx of [-0.6, 0.6]) sph(g, 0.014, emissive(0xFF4020, 1.2), sx, 0.42, -0.285, 1, 1, 1, 8);
+  const body = paint(0xDCE5EC, 0.55);
+  rbox(g, 1.44, 0.2, 0.76, body, 0, -0.02, 0, 0.07);                               // chunky vat housing
+  rbox(g, 1.3, 0.02, 0.58, M.oil, 0, 0.11, 0, 0.006);                              // oil surface
+  for (const [w, d, x, z] of [[1.44, 0.09, 0, 0.335], [1.44, 0.09, 0, -0.335], [0.09, 0.76, 0.675, 0], [0.09, 0.76, -0.675, 0], [0.06, 0.6, 0, 0]]) rbox(g, w, 0.07, d, body, x, 0.14, z, 0.03);
+  rbox(g, 1.44, 0.44, 0.1, body, 0, 0.14, -0.35, 0.05);                            // back panel
+  rbox(g, 0.7, 0.16, 0.02, paint(0x4FCFC2, 0.6), 0, 0.36, -0.295, 0.03);
+  decal(g, 0.62, 0.13, (c, w, h) => { c.clearRect(0, 0, w, h); c.fillStyle = '#FFFFFF'; c.font = 'bold 64px Bungee'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('FRY-O-MATIC', w / 2, h / 2 + 4); }, 0, 0.44, -0.283, 0, 512, 110);
+  slotX.forEach((x) => knob(g, x - cx, 0.24, -0.28));
+  for (const sx of [-0.6, 0.6]) sph(g, 0.022, emissive(0xFF5030, 1.4), sx, 0.47, -0.29, 1, 1, 1, 10);
   return g;
 }
 let WIRE = null;
@@ -386,56 +394,58 @@ export function fryBasket() {
   const h = cyl(g, 0.018, 0.018, 0.12, M.black, 0, 0.0, 0, 10); h.position.set(0, 0.26, 0.47); h.rotation.x = Math.PI / 2 - 0.4;
   return g;
 }
-export function toasterModel() {
+export function toasterModel() {   // a fat retro two-slicer
   const g = new THREE.Group();
-  rbox(g, 0.62, 0.24, 0.3, M.chrome, 0, 0, 0, 0.09);
-  rbox(g, 0.6, 0.02, 0.28, M.black, 0, -0.005, 0, 0.01);
-  for (const x of [-0.15, 0.15]) rbox(g, 0.2, 0.02, 0.05, M.black, x, 0.232, 0, 0.01);         // slots
-  for (const x of [-0.15, 0.15]) rbox(g, 0.05, 0.03, 0.04, M.black, x, 0.12, 0.16, 0.012);     // levers
-  knob(g, 0.27, 0.06, 0.16);
-  rbox(g, 0.62, 0.012, 0.302, paint(C.cherry, 0.3), 0, 0.07, 0, 0.005);
+  rbox(g, 0.66, 0.3, 0.34, paint(0xF0564E, 0.45), 0, 0, 0, 0.13);
+  rbox(g, 0.64, 0.05, 0.32, paint(0xFFF3D6, 0.6), 0, 0.27, 0, 0.025);
+  for (const x of [-0.15, 0.15]) rbox(g, 0.22, 0.03, 0.06, paint(0x3B3540, 0.6), x, 0.29, 0, 0.015);   // slots
+  for (const x of [-0.15, 0.15]) rbox(g, 0.07, 0.05, 0.07, paint(0xFFF3D6, 0.6), x, 0.13, 0.17, 0.025); // levers
+  knob(g, 0.25, 0.08, 0.17, paint(0xFFF3D6, 0.6));
+  for (const x of [-0.26, 0.26]) cyl(g, 0.035, 0.04, 0.03, paint(0x3B3540, 0.7), x, -0.02, 0, 10);
   return g;
 }
 export function blenderModel() {
   const g = new THREE.Group();
-  lathe(g, [[0, 0], [0.12, 0], [0.12, 0.02], [0.1, 0.14], [0.085, 0.16], [0, 0.16]], paint(C.cherry, 0.3));
-  for (let i = 0; i < 3; i++) { const b = rbox(g, 0.03, 0.02, 0.02, i === 1 ? M.chrome : M.black, -0.04 + i * 0.04, 0.07, 0.105, 0.006); b.rotation.x = -0.35; }
-  lathe(g, [[0.07, 0.16], [0.075, 0.16], [0.095, 0.46], [0.1, 0.47], [0.093, 0.47], [0.07, 0.17]], M.glass);
-  tube(g, [[0.09, 0.42], [0.14, 0.4], [0.14, 0.24], [0.08, 0.22]].map(([x, y]) => [x, y, 0]), 0.012, M.glass, 10);
-  cyl(g, 0.02, 0.02, 0.02, M.steel, 0, 0.16);
+  rbox(g, 0.26, 0.17, 0.26, paint(0xF0564E, 0.45), 0, 0, 0, 0.07);                // chunky base
+  for (let i = 0; i < 3; i++) rbox(g, 0.045, 0.035, 0.03, i === 1 ? paint(0xFFC83D, 0.5) : paint(0xFFF3D6, 0.6), -0.06 + i * 0.06, 0.07, 0.13, 0.012);
+  lathe(g, [[0.075, 0.17], [0.08, 0.17], [0.105, 0.46], [0.11, 0.47], [0.1, 0.47], [0.075, 0.18]], M.glass);
+  tube(g, [[0.1, 0.42], [0.155, 0.4], [0.155, 0.24], [0.085, 0.22]].map(([x, y]) => [x, y, 0]), 0.018, paint(0xF0564E, 0.45), 10);
+  cyl(g, 0.03, 0.03, 0.025, M.steel, 0, 0.17);
   return g;
 }
 export function blenderLid() { const g = new THREE.Group(); cyl(g, 0.102, 0.098, 0.03, M.black, 0, 0, 0, 22); cyl(g, 0.03, 0.03, 0.02, M.black, 0, 0.03, 0, 14); return g; }
 
-export function fridgeModel() { // faces +x
+export function fridgeModel() { // a big rounded retro fridge, faces +x
   const g = new THREE.Group();
-  rbox(g, 0.85, 1.9, 1.05, paint(0xBFE3D5, 0.35), 0, 0, 0, 0.12);
-  rbox(g, 0.04, 1.08, 0.98, paint(0xC9EADD, 0.3), 0.43, 0.08, 0, 0.03);
-  rbox(g, 0.04, 0.62, 0.98, paint(0xC9EADD, 0.3), 0.43, 1.22, 0, 0.03);
-  for (const [y, h] of [[0.35, 0.55], [1.32, 0.38]]) { rbox(g, 0.06, h, 0.05, M.chrome, 0.48, y, -0.38, 0.02); }
-  decal(g, 0.32, 0.1, (c, w, h) => label(c, w, h, 'Frostee', null, '#C8262B', 'Bungee'), 0.452, 1.72, 0, Math.PI / 2, 256, 80);
-  for (const z of [-0.4, 0.4]) cyl(g, 0.04, 0.05, 0.05, M.chrome, 0, -0.04, z, 12);
+  const shell = paint(0xA9E5D8, 0.5), door = paint(0xB9EDE1, 0.5);
+  rbox(g, 0.85, 1.9, 1.05, shell, 0, 0.06, 0, 0.2);
+  rbox(g, 0.06, 1.06, 0.96, door, 0.43, 0.14, 0, 0.05);
+  rbox(g, 0.06, 0.6, 0.96, door, 0.43, 1.28, 0, 0.05);
+  for (const [y, h] of [[0.4, 0.5], [1.38, 0.34]]) rbox(g, 0.09, h, 0.08, M.chrome, 0.5, y, -0.36, 0.04);
+  decal(g, 0.36, 0.11, (c, w, h) => label(c, w, h, 'Frostee', null, '#F0564E', 'Bungee'), 0.465, 1.74, 0, Math.PI / 2, 256, 80);
+  for (const z of [-0.38, 0.38]) cyl(g, 0.06, 0.07, 0.07, paint(0x3B3540, 0.7), 0, 0, z, 12);
   return g;
 }
-export function freezerModel() { // reach-in, faces +z
+export function freezerModel() { // chunky two-door reach-in, faces +z
   const g = new THREE.Group();
-  rbox(g, 1.5, 2.15, 0.95, M.steel, 0, 0, 0, 0.04);
+  const body = paint(0xDCE5EC, 0.55);
+  rbox(g, 1.5, 2.1, 0.95, body, 0, 0.04, 0, 0.1);
+  rbox(g, 1.52, 0.26, 0.97, paint(0x4FCFC2, 0.55), 0, 1.86, 0, 0.08);             // mint header
+  decal(g, 0.7, 0.16, (c, w, h) => label(c, w, h, 'FREEZER', null, '#FFFFFF', 'Bungee'), 0, 1.99, 0.49, 0, 512, 120);
   for (const x of [-0.37, 0.37]) {
-    rbox(g, 0.7, 1.7, 0.04, M.darkSteel, x, 0.3, 0.48, 0.02);
-    rbox(g, 0.6, 1.5, 0.02, M.frost, x, 0.4, 0.5, 0.01);
-    rbox(g, 0.04, 0.5, 0.05, M.chrome, x + (x < 0 ? 0.28 : -0.28), 0.9, 0.53, 0.02);
-    for (let i = 0; i < 4; i++) rbox(g, 0.56, 0.015, 0.4, M.steel, x, 0.55 + i * 0.36, 0.25, 0.005);
-    for (let i = 0; i < 3; i++) rbox(g, 0.12, 0.14, 0.1, i % 2 ? paint(0x2F6FBF, 0.4) : paint(C.pink, 0.4), x - 0.15 + i * 0.15, 0.565 + 0.36, 0.25, 0.02);
+    rbox(g, 0.7, 1.62, 0.06, body, x, 0.16, 0.48, 0.05);
+    rbox(g, 0.5, 1.1, 0.02, paint(0xCFEFF6, 0.3, { transparent: true, opacity: 0.85 }), x, 0.45, 0.515, 0.04);   // frosty window
+    rbox(g, 0.08, 0.6, 0.08, M.chrome, x + (x < 0 ? 0.27 : -0.27), 0.65, 0.55, 0.04);
   }
-  decal(g, 0.6, 0.14, (c, w, h) => label(c, w, h, 'FREEZER', '#3FB8AF', '#1B1B1B'), 0, 2.0, 0.476, 0, 512, 120);
+  for (const x of [-0.6, 0.6]) cyl(g, 0.06, 0.07, 0.05, paint(0x3B3540, 0.7), x, 0, 0.3, 12);
   return g;
 }
 export function breadboxModel() {
   const g = new THREE.Group();
-  rbox(g, 0.5, 0.06, 0.34, M.wood, 0, 0, 0, 0.015);
-  const dome = sph(g, 0.25, paint(C.teal, 0.35), 0, 0.06, 0, 1, 0.72, 0.68, 22); void dome;
-  rbox(g, 0.18, 0.025, 0.04, M.chrome, 0, 0.1, 0.18, 0.01);
-  decal(g, 0.22, 0.06, (c, w, h) => label(c, w, h, 'BREAD', null, '#F5EBD3'), 0, 0.16, 0.172, 0, 256, 70);
+  rbox(g, 0.52, 0.07, 0.36, M.wood, 0, 0, 0, 0.03);
+  sph(g, 0.26, paint(0xF0564E, 0.5), 0, 0.07, 0, 1, 0.75, 0.7, 24);
+  rbox(g, 0.2, 0.04, 0.06, paint(0xFFF3D6, 0.6), 0, 0.11, 0.18, 0.018);
+  decal(g, 0.24, 0.07, (c, w, h) => label(c, w, h, 'BREAD', null, '#FFF3D6'), 0, 0.18, 0.18, 0, 256, 70);
   return g;
 }
 export function cuttingBoard() {
@@ -469,31 +479,31 @@ export function hoodModel(w) {
 }
 export function sinkModel() { // on counter, faces -x (into kitchen)
   const g = new THREE.Group();
+  const body = paint(0xDCE5EC, 0.55);
+  rbox(g, 0.66, 0.06, 1.1, body, 0, -0.03, 0, 0.03);
   for (const z of [-0.27, 0.27]) {
-    rbox(g, 0.6, 0.03, 0.5, M.steel, 0, -0.01, z, 0.01);
-    rbox(g, 0.52, 0.02, 0.42, M.darkSteel, 0, -0.005, z, 0.01);
-    rbox(g, 0.5, 0.004, 0.4, M.water, 0, 0.012, z, 0.002);
+    rbox(g, 0.52, 0.04, 0.44, M.darkSteel, 0, -0.012, z, 0.02);                     // basin
+    rbox(g, 0.5, 0.006, 0.42, M.water, 0, 0.02, z, 0.003);
   }
-  rbox(g, 0.05, 0.05, 1.06, M.steel, 0.29, 0, 0, 0.01);
-  tube(g, [[0.27, 0.02, 0], [0.27, 0.35, 0], [0.18, 0.42, 0], [0.08, 0.36, 0]], 0.018, M.chrome, 16);
-  for (const z of [-0.08, 0.08]) knob(g, 0.27, 0.06, z, paint(z < 0 ? 0xD02020 : 0x2060D0, 0.3)).rotation.y = Math.PI / 2;
-  // drying rack + sponge
-  rbox(g, 0.05, 0.03, 0.08, paint(0xF2D23C, 0.8), -0.2, 0.02, 0.0, 0.01);
+  rbox(g, 0.08, 0.1, 1.1, body, 0.3, -0.03, 0, 0.035);                            // back ledge
+  tube(g, [[0.28, 0.06, 0], [0.28, 0.4, 0], [0.18, 0.48, 0], [0.07, 0.4, 0]], 0.03, M.chrome, 16);
+  for (const z of [-0.12, 0.12]) knob(g, 0.28, 0.1, z, paint(z < 0 ? 0xF0564E : 0x4C8DF0, 0.45)).rotation.y = Math.PI / 2;
+  rbox(g, 0.1, 0.05, 0.13, paint(0xFFC83D, 0.8), -0.2, 0.03, 0.0, 0.02);           // sponge
   return g;
 }
 export function dishRackModel() {
   const g = new THREE.Group();
-  rbox(g, 0.62, 0.02, 0.46, M.chrome, 0, 0, 0, 0.006);
-  for (let i = 0; i < 12; i++) { const w = cyl(g, 0.004, 0.004, 0.18, M.chrome, -0.29, 0.02, -0.21 + i * 0.038, 6); void w; const w2 = cyl(g, 0.004, 0.004, 0.18, M.chrome, 0.29, 0.02, -0.21 + i * 0.038, 6); void w2; }
-  rbox(g, 0.62, 0.012, 0.012, M.chrome, 0, 0.19, -0.23, 0.004); rbox(g, 0.62, 0.012, 0.012, M.chrome, 0, 0.19, 0.23, 0.004);
+  rbox(g, 0.64, 0.04, 0.48, paint(0x4FCFC2, 0.6), 0, 0, 0, 0.018);
+  for (let i = 0; i < 8; i++) for (const x of [-0.27, 0.27]) cyl(g, 0.008, 0.008, 0.2, paint(0xFFF3D6, 0.6), x, 0.03, -0.2 + i * 0.057, 6);
+  for (const z of [-0.23, 0.23]) rbox(g, 0.64, 0.025, 0.025, paint(0x4FCFC2, 0.6), 0, 0.2, z, 0.01);
   return g;
 }
 export function printerModel() {
   const g = new THREE.Group();
-  rbox(g, 0.3, 0.16, 0.32, paint(0x34353A, 0.45), 0, 0, 0, 0.04);
-  rbox(g, 0.26, 0.05, 0.16, paint(0x4A4B52, 0.45), 0, 0.14, 0.04, 0.03);
-  rbox(g, 0.2, 0.012, 0.02, M.black, 0, 0.17, -0.08, 0.004);
-  rbox(g, 0.05, 0.02, 0.03, paint(0x4A4B52, 0.4), 0.09, 0.16, 0.13, 0.008);
+  rbox(g, 0.32, 0.18, 0.34, paint(0x3B3540, 0.6), 0, 0, 0, 0.06);
+  rbox(g, 0.28, 0.06, 0.18, paint(0xFFF3D6, 0.6), 0, 0.15, 0.04, 0.03);
+  rbox(g, 0.18, 0.004, 0.12, paint(0xFFFFFF, 0.8), 0, 0.21, -0.12, 0.002).rotation.x = -0.6;   // paper curling out
+  rbox(g, 0.06, 0.03, 0.04, paint(0xF0564E, 0.5), 0.1, 0.17, 0.14, 0.012);
   return g;
 }
 export function railModel(w) {
@@ -524,13 +534,12 @@ export function breakerModel() {
   return g;
 }
 // wall-mounted kitchen display: body centred on the group origin, screen faces -z
-export function tvModel() {
+export function tvModel() {   // chunky little order screen on a stand (screen centre at y 0.45)
   const g = new THREE.Group();
-  rbox(g, 1.34, 0.8, 0.07, paint(0x1A1A1D, 0.35), 0, -0.4, 0, 0.03);          // bezel
-  rbox(g, 0.5, 0.3, 0.06, paint(0x2A2A2E, 0.5), 0, -0.15, 0.06, 0.02);         // back box
-  rbox(g, 0.08, 0.08, 0.12, M.darkSteel, 0, -0.04, 0.12, 0.02);                // wall arm
-  rbox(g, 0.3, 0.3, 0.02, M.darkSteel, 0, -0.15, 0.17, 0.01);                  // wall plate
-  sph(g, 0.008, emissive(0x33DD77, 1.4), 0.6, -0.37, -0.037, 1, 1, 1, 8);      // power light
+  rbox(g, 1.42, 0.86, 0.12, paint(0x3B3540, 0.6), 0, 0.02, 0, 0.08);             // fat bezel
+  rbox(g, 0.12, 0.2, 0.1, paint(0x3B3540, 0.6), 0, -0.18, 0.06, 0.03);            // neck
+  rbox(g, 0.6, 0.06, 0.4, paint(0x3B3540, 0.6), 0, -0.24, 0.06, 0.03);            // foot
+  sph(g, 0.014, emissive(0x33DD77, 1.4), 0.62, 0.06, -0.062, 1, 1, 1, 8);
   return g;
 }
 

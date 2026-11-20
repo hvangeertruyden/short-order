@@ -271,9 +271,10 @@ export class Sim {
     this.spawnCustomer();
   }
 
-  lineSpot(i) { return { x: L.orderLine.x - Math.min(i, 5) * L.orderLine.step, z: L.orderLine.z + (i > 5 ? 0.8 : 0) }; }
+  // three parties per row along the counter, a second row behind (room for each party's friends)
+  lineSpot(i) { const c = i % 3, r = Math.floor(i / 3); return { x: L.orderLine.x - c * L.orderLine.step, z: L.orderLine.z + r * 1.55 }; }
   paySpot(i) { return { x: L.payLine.x + i * L.payLine.step, z: L.payLine.z }; }
-  pickupSpot(i) { return { x: L.pickup.x + (i % 2) * 0.65, z: L.pickup.z + Math.floor(i / 2) * 0.7 }; }
+  pickupSpot(i) { return { x: L.pickup.x + (i % 2) * 1.45, z: L.pickup.z + Math.floor(i / 2) * 1.5 }; }
 
   // Walk toward p with easing: speed up from a standstill, slow down when
   // arriving, cut corners at intermediate waypoints, and walk at a personal pace.

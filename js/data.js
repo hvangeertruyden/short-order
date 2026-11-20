@@ -260,9 +260,9 @@ export const L = {
   windows: [3.6, 6.2],             // front wall (z = 9)
   cutWindows: [-6.2, -3.6],        // the short front wall of the counter side (z = cut.z)
   // walking: queue in front of the counter, pickup beside the register, pay at the stand by the door
-  orderLine: { x: -3.2, z: 1.95, step: 0.85 },     // grows toward -x, along the counter
+  orderLine: { x: -3.2, z: 1.95, step: 1.6 },      // grows toward -x along the counter, then a second row
   pickup: { x: -2.2, z: 1.95 },                     // waiting for a drink: beside the register
-  payLine: { x: 2.55, z: 8.35, step: 0.8 },         // grows toward +x
+  payLine: { x: 2.55, z: 8.3, step: 1.4 },          // grows toward +x
   inspectorSpot: { x: -0.4, z: 6.0 },
   // places customers wander over to while they wait (face = what they look at)
   wanderSpots: [

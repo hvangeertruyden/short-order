@@ -33,7 +33,23 @@ let FLAME_TEX = null;
 // food and dishes are drawn oversized so you can read them from the top-down camera
 const big = (m, k = 1.5) => { m.scale.multiplyScalar(k); return m; };
 // the mouse looks straight through these to the station / counter underneath
-const noHit = (m) => { m.userData.noHit = true; return m; };   // shared texture for fire sprites
+const noHit = (m) => { m.userData.noHit = true; return m; };
+// the other side of the wall is shown darkened (you can watch, but it isn't yours)
+const DIM = new WeakMap(), DIM_TINT = new THREE.Color(0x0A1A3A);
+function dimMat(m) {
+  if (!m || !m.isMaterial) return m;
+  if (!DIM.has(m)) { const d = m.clone(); if (d.color) d.color.multiplyScalar(0.16).lerp(DIM_TINT, 0.1); if (d.emissive) d.emissiveIntensity *= 0.2; DIM.set(m, d); }
+  return DIM.get(m);
+}
+const countMeshes = (o) => { let n = 0; o.traverse((m) => { if (m.isMesh) n++; }); return n; };
+function setDim(o, on) {
+  o.userData.dim = on; o.userData.dimN = countMeshes(o);
+  o.traverse((m) => {
+    if (!m.isMesh || m.material?.visible === false) return;
+    if (on && !m.userData.litMat) { m.userData.litMat = m.material; m.material = Array.isArray(m.material) ? m.material.map(dimMat) : dimMat(m.material); }
+    else if (!on && m.userData.litMat) { m.material = m.userData.litMat; delete m.userData.litMat; }
+  });
+}   // shared texture for fire sprites
 
 export class World {
   constructor(scene) {
@@ -50,7 +66,7 @@ export class World {
     this.buildDining();
     this.decor = buildDecor(this);
     this.buildOutdoors();
-    this.buildRoofs();
+    this.roofs = { kitchen: new THREE.Group(), dining: new THREE.Group() };
     this.life = new Life(scene);
     this.static.traverse((o) => { if (o.userData.ia) this.iaObjs.set(o.userData.ia, o); if (o.isMesh) { o.receiveShadow = true; } });
     this.static.updateMatrixWorld(true);
@@ -182,8 +198,10 @@ export class World {
 
     // kitchen walls: front wall with the pass, side wall to the restroom corridor
     const dz = L.wallZ, p0 = L.pass.x0, p1 = L.pass.x1;
-    wallX(-8, p0, dz, 'tile', 'diner', 0, 1.05); wallX(p1, L.kitchen.x1 + 0.15, dz, 'tile', 'diner', 0, 1.05);
-    wallX(p0, p1, dz, 'tile', 'diner', 0, L.pass.shelfY - 0.05);
+    const n0 = S.children.length;
+    wallX(-8, p0, dz, 'tile', 'diner'); wallX(p1, L.kitchen.x1 + 0.15, dz, 'tile', 'diner');
+    wallX(p0, p1, dz, 'tile', 'diner', 0, L.pass.shelfY - 0.05); wallX(p0, p1, dz, 'tile', 'diner', 2.0, H, false);
+    this.dividerWall = S.children.slice(n0);
     col(p0, dz - 0.12, p1, dz + 0.12);
     wallZ(-7, -2, L.kitchen.x1 + 0.05, 'tile', null);
     // restroom block: corridor wall with two door openings, divider, front wall
@@ -200,13 +218,13 @@ export class World {
     const cab = (x0, x1, z, depth, facing, top = true) => {
       const w = x1 - x0, cx = (x0 + x1) / 2, made = [];
       made.push(rbox(S, w, TOP - 0.06, depth, M.steel, cx, 0, z, 0.01));
-      if (top) made.push(rbox(S, w + 0.02, 0.06, depth + 0.03, M.steel, cx, TOP - 0.06, z, 0.008));
+      if (top) made.push(rbox(S, w + 0.06, 0.08, depth + 0.06, paint(0xF6EEDF, 0.6), cx, TOP - 0.08, z, 0.035));   // thick rounded worktop
       made.push(rbox(S, w, 0.08, depth - 0.06, M.black, cx, 0, z - facing * 0.03, 0.005));
       const doors = Math.max(1, Math.round(w / 0.6));
       for (let i = 0; i < doors; i++) {
         const dx = x0 + (i + 0.5) * (w / doors);
-        made.push(rbox(S, w / doors - 0.03, TOP - 0.24, 0.015, M.panel, dx, 0.12, z + facing * (depth / 2 + 0.005), 0.006));
-        made.push(rbox(S, 0.16, 0.018, 0.025, M.chrome, dx, TOP - 0.2, z + facing * (depth / 2 + 0.02), 0.008));
+        made.push(rbox(S, w / doors - 0.05, TOP - 0.26, 0.04, M.panel, dx, 0.13, z + facing * (depth / 2 + 0.01), 0.03));
+        made.push(rbox(S, 0.2, 0.035, 0.045, M.chrome, dx, TOP - 0.22, z + facing * (depth / 2 + 0.04), 0.016));
       }
       col(x0, z - depth / 2, x1, z + depth / 2);
       return made;
@@ -236,8 +254,8 @@ export class World {
       const g = ia(grp(S, L.tv.x, L.tv.y, L.tv.z - 0.17), 'tv'); g.add(Mo.tvModel());
       this.tvCanvas = canvasTex(1024, 576, () => {});
       const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.26, 0.709), new THREE.MeshBasicMaterial({ map: this.tvCanvas.tex, toneMapped: false }));
-      scr.position.set(0, 0, -0.037); scr.rotation.y = Math.PI; g.add(scr);
-      g.rotation.x = -0.12;
+      scr.position.set(0, 0.45, -0.065); scr.rotation.y = Math.PI; g.add(scr);
+      g.scale.setScalar(0.45); g.position.y += 0.11;
     }
     { const g = ia(grp(S, (L.rail.x0 + L.rail.x1) / 2, L.rail.y, L.rail.z - 0.04), 'rail'); g.add(Mo.railModel(L.rail.x1 - L.rail.x0 + 0.3)); }
     { const g = ia(grp(S, L.bell.x, L.pass.shelfY, L.bell.z), 'bell'); this.bellObj = g; g.add(Mo.bellModel()); hitBox(g, 0.18, 0.12, 0.18, 0, 0, 0); }
@@ -758,7 +776,7 @@ export class World {
     this.zoneList = [];
     for (const o of this.static.children) {
       if (o === this.roofs?.kitchen || o === this.roofs?.dining || o.userData.outdoor) continue;
-      b.setFromObject(o); if (b.isEmpty() || b.max.y < 0.02) continue;      // floors and ground stay
+      b.setFromObject(o); if (b.isEmpty() || b.max.x - b.min.x > 20 || (b.min.z + b.max.z) / 2 > 9.2) continue;   // ground, street, sidewalk stay lit
       if (b.min.x < 3.0 && b.max.x > 3.2 && b.min.z < L.wallZ - 1) continue;   // long walls shared by both sides
       b.getCenter(c);
       const z = this.zoneAt(c.x, c.z); if (z !== 'both') this.zoneList.push([o, z]);
@@ -767,43 +785,23 @@ export class World {
   }
   applyZones(role) {
     const mine = role === 'cook' ? 'kitchen' : 'dining';
-    const hideSubtree = (o, show) => o.traverse((x) => { if (x.isCSS2DObject || x.userData.css) { if (!show) { if (x.visible) { x.visible = false; x.userData.zoneHidden = true; } } else if (x.userData.zoneHidden) { x.visible = true; x.userData.zoneHidden = false; } } });
     if (this.zoneRole !== role) {
       this.zoneRole = role;
-      for (const [o, z] of this.zoneList) { const show = z === mine; o.visible = show; hideSubtree(o, show); }
-      this.roofs.kitchen.visible = role !== 'cook'; this.roofs.dining.visible = role === 'cook';
+      for (const [o, z] of this.zoneList) setDim(o, z !== mine);
+      // the wall between the two sides: solid from the dining room, see-through from the kitchen
+      // (the cook's camera looks over it from the dining-room side)
+      for (const m of this.dividerWall) {
+        if (!m.isMesh) continue;
+        if (role === 'cook') { if (!m.userData.solidMat) { m.userData.solidMat = m.material; const g = m.material.clone(); g.transparent = true; g.opacity = 0.22; g.depthWrite = false; m.material = g; m.castShadow = false; } }
+        else if (m.userData.solidMat) { m.material = m.userData.solidMat; delete m.userData.solidMat; m.castShadow = true; }
+      }
     }
+    // people, food, puddles... dim whatever is on the other side right now
     for (const o of this.dynRoot.children) {
       const z = this.zoneAt(o.position.x, o.position.z);
-      const show = z === 'both' || z === mine;
-      if (o.visible !== show) { o.visible = show; hideSubtree(o, show); }
-      else if (!show) hideSubtree(o, false);
+      const dim = z !== 'both' && z !== mine;
+      if (o.userData.dim !== dim || (dim && o.userData.dimN !== countMeshes(o))) setDim(o, dim);
     }
-  }
-
-  buildRoofs() {
-    const mk = (parts) => {
-      const g = new THREE.Group();
-      const top = paint(0xE4DCCD, 0.95), lip = paint(0xF0786A, 0.8), duct = paint(0xC9D3DC, 0.7);
-      for (const [x0, z0, x1, z1] of parts) {
-        rbox(g, x1 - x0, 0.14, z1 - z0, top, (x0 + x1) / 2, 1.08, (z0 + z1) / 2, 0);
-        // a chunky coral parapet around each section
-        for (const [w, d, x, z] of [[x1 - x0, 0.22, (x0 + x1) / 2, z0 + 0.11], [x1 - x0, 0.22, (x0 + x1) / 2, z1 - 0.11], [0.22, z1 - z0, x0 + 0.11, (z0 + z1) / 2], [0.22, z1 - z0, x1 - 0.11, (z0 + z1) / 2]]) rbox(g, w, 0.22, d, lip, x, 1.08, z, 0.06);
-        // air-conditioning boxes and vents so it reads as a roof
-        const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-        rbox(g, 1.1, 0.55, 0.8, duct, cx - (x1 - x0) * 0.22, 1.22, cz, 0.1);
-        for (let i = 0; i < 3; i++) cyl(g, 0.09, 0.11, 0.35, duct, cx + (x1 - x0) * 0.18 + i * 0.5, 1.22, cz - (z1 - z0) * 0.2, 14);
-        for (const sx of [-1, 1]) { const f = cyl(g, 0.28, 0.28, 0.08, duct, cx - (x1 - x0) * 0.22 + sx * 0.25, 1.77, cz, 18); f.castShadow = false; }
-      }
-      g.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = true; } });
-      g.visible = false;
-      this.static.add(g);
-      return g;
-    };
-    this.roofs = {
-      kitchen: mk([[-8.2, -7.25, 3.15, L.wallZ - 0.2]]),
-      dining: mk([[-8.2, L.wallZ + 0.2, 8.2, L.cut.z], [L.cut.x, L.cut.z, 8.2, 9.15], [3.15, -7.25, 8.2, L.wallZ - 0.05]]),
-    };
   }
 
   // grass, trees, bushes and benches around the diner (cartoon scenery)

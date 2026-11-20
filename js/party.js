@@ -207,10 +207,10 @@ export function installParty(Sim) {
         for (const o of s.customers) {
           if (o === c) continue;
           const ox = c.x - o.x, oz = c.z - o.z, od = Math.hypot(ox, oz);
-          if (od > 0.01 && od < 0.55) {
+          if (od > 0.01 && od < 0.7) {
             const hx = -Math.sin(c.yaw), hz = -Math.cos(c.yaw);
             const side = (ox * -hz + oz * hx) >= 0 ? 1 : -1;
-            const push = (0.55 - od) * 2.2 * dt;
+            const push = (0.7 - od) * 2.2 * dt;
             c.x += -hz * side * push; c.z += hx * side * push;
           }
         }
@@ -263,10 +263,10 @@ export function installParty(Sim) {
       const fx = -Math.sin(l.yaw), fz = -Math.cos(l.yaw);
       target = { x: l.x - fx * 0.75 * (k + 1) + (k % 2 ? 0.3 : -0.3) * fz, z: l.z - fz * 0.75 * (k + 1) - (k % 2 ? 0.3 : -0.3) * fx };
     } else if (l.st === 'pay') {
-      const o = [[0, 0.65], [0.6, 0.65], [-0.6, 0.65]][k] || [0, 1.2];
+      const o = [[0, -0.75], [0.62, -0.75], [-0.62, -0.75]][k] || [0, -1.4];   // the pay stand is against the front wall: friends wait in front
       target = { x: l.x + o[0], z: l.z + o[1] };
     } else {
-      const o = [[0.65, 0], [0.65, 0.45], [1.25, 0.22]][k] || [1.3, 0.6];
+      const o = [[0, 0.72], [0.62, 0.72], [-0.62, 0.72]][k] || [0, 1.3];        // friends stand right behind whoever's ordering
       target = { x: l.x + o[0], z: l.z + o[1] };
     }
     const done = this.moveToward(c, target, dt, !l.path.length);
