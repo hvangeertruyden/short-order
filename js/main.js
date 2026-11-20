@@ -9,7 +9,6 @@ import { newFood } from './kitchen.js';
 import { itemModel } from './models.js';
 import { SOURCES, RECIPES, MUSIC } from './data.js';
 import { World, heldModel, heldSig, receiptHeldModel, COLLIDERS } from './world.js';
-import { furnish } from './furnish.js';
 import { Sim, receiptById } from './sim.js';
 import { getMenu, canTouch } from './actions.js';
 import { Controls, isTyping } from './player.js';
@@ -43,16 +42,14 @@ scene.background = new THREE.Color(0x9FD8E8);
 // soft studio reflections so chrome and steel actually look like metal
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-scene.environmentIntensity = 0.6;
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 80);
+scene.environmentIntensity = 0.35;
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.5, 120);
 camera.rotation.order = 'YXZ';
 scene.add(camera);
-const heldGroup = new THREE.Group(); heldGroup.position.set(0.3, -0.34, -0.6); camera.add(heldGroup);
-const rcptGroup = new THREE.Group(); rcptGroup.position.set(-0.3, -0.26, -0.5); camera.add(rcptGroup);
-camera.add(new THREE.PointLight(0xFFFFFF, 0.6, 1.5));
+const CAM = { h: 9.2, back: 6.6 };   // third-person camera offset (above, and south of, the player)
 
 const world = new World(scene);
-furnish(world, COLLIDERS);   // detailed furniture streams in after the first frame
+
 const post = createPost(renderer, scene, camera);
 try { const q = localStorage.getItem('shortorder.quality'); if (q != null) post.setQuality(Number(q)); } catch {}
 const controls = new Controls(renderer.domElement);
@@ -81,6 +78,7 @@ const ui = new UI({
 });
 $('#end-shift').addEventListener('click', () => { if (G.sim && G.solo && G.mode !== 'guest') G.sim.endShift(); });
 ui.onShake = () => { if (G.role === 'server') G.shake = 0.35; };
+ui.kdsCanvas = world.tvCanvas.cv;   // the kitchen screen, shown in the cook's HUD
 
 function act(a) {
   if (!a || !G.state) return;
@@ -294,6 +292,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyV') { const q = post.cycle(); try { localStorage.setItem('shortorder.quality', String(q)); } catch {} ui.localToast(['🖥️ Graphics: low', '🖥️ Graphics: medium', '🖥️ Graphics: high'][q]); return; }
   if (e.code === 'KeyN') { audio.setMusicEnabled(!audio.musicEnabled()); ui.localToast(audio.musicEnabled() ? '🎵 Diner radio on' : '🎵 Diner radio off'); return; }
   if (e.code === 'KeyM') { G.muted = !G.muted; audio.setVolume(G.muted ? 0 : 0.35); ui.localToast(G.muted ? '🔇 Muted' : '🔊 Sound on'); return; }
+  if (e.code === 'Space') { e.preventDefault(); const a = ui.currentActions.find((x) => !x.disabled && x.a); if (a) act(a.a); else audio.play('deny'); return; }
   const m = /^Digit([1-9])$/.exec(e.code);
   if (m) { const a = ui.currentActions[Number(m[1]) - 1]; if (a && !a.disabled && a.a) act(a.a); else audio.play('deny'); }
 });
@@ -301,26 +300,34 @@ window.addEventListener('pointerdown', () => audio.unlockAudio());
 // menu-button click for buttons that don't already make a sound through act()
 document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && !b.disabled && !b.closest('#menu, #npc, .pt-card')) audio.play('menu'); });
 
-controls.onClick = () => {
-  if (!G.hovered || G.hovered !== G.target?.key || G.far) return;
-  const a = ui.currentActions.find((x) => !x.disabled && x.a);
-  if (a) act(a.a);
-};
+controls.onClick = null;   // third person: you act on whatever you're standing at (Space or 1-6)
 
 // ---- hover / highlight ---------------------------------------------------------
 const tmpV = new THREE.Vector3();
-function pickHovered() {
-  if (!controls.mouse.inside) return null;
-  raycaster.setFromCamera({ x: controls.mouse.nx, y: controls.mouse.ny }, camera);
-  const hits = raycaster.intersectObjects([world.static, world.dynRoot], true);
-  for (const h of hits) {
-    let o = h.object, iaObj = null, noHit = false;
-    while (o) { if (o.userData.noHit) noHit = true; if (!iaObj && o.userData.ia) iaObj = o; o = o.parent; }
-    if (noHit) continue;
-    if (!iaObj && h.object.material?.transparent && h.object.material.opacity < 0.6) continue;
-    return iaObj;
+// whatever you're standing next to and facing (third person, no mouse aiming)
+const REACH = 1.95;
+function pickNearest() {
+  const s = G.state, role = G.role;
+  const fx = -Math.sin(G.me.yaw), fz = -Math.cos(G.me.yaw);
+  let best = null, bestScore = Infinity;
+  for (const [key, obj] of world.iaObjs) {
+    if (!obj.parent || !canTouch(role, key)) continue;
+    let vis = true; for (let o = obj; o; o = o.parent) if (!o.visible) { vis = false; break; }
+    if (!vis) continue;
+    obj.getWorldPosition(tmpV);
+    const dx = tmpV.x - G.me.x, dz = tmpV.z - G.me.z, d = Math.hypot(dx, dz);
+    if (d > REACH) continue;
+    const facing = d > 0.05 ? (dx * fx + dz * fz) / d : 1;
+    if (facing < -0.1) continue;
+    let score = d * (1.7 - facing);
+    if (score >= bestScore) continue;
+    const menu = getMenu(s, role, key);
+    if (!menu) continue;
+    if (!menu.actions.some((x) => !x.disabled)) score *= 2.5;   // things you can't do anything with right now rank last
+    if (key.startsWith('cust:')) score *= 0.75;                  // people first
+    if (score < bestScore) { best = obj; bestScore = score; }
   }
-  return null;
+  return best;
 }
 
 function setHighlight(obj) {
@@ -357,8 +364,8 @@ function loop(now) {
 
 function idleCamera() {
   // slow pan around the dining room behind the lobby
-  camera.position.set(Math.sin(time * 0.1) * 3, 2.2, 5 + Math.cos(time * 0.1));
-  camera.rotation.set(-0.2, Math.PI + Math.sin(time * 0.1) * 0.6, 0);
+  camera.position.set(Math.sin(time * 0.08) * 6, 12, 10 + Math.cos(time * 0.08) * 4);
+  camera.lookAt(0, 0, 1);
 }
 
 function step(dt) {
@@ -381,35 +388,25 @@ function step(dt) {
     else if (G.mode === 'guest') G.net.send({ k: 'pose', x: G.me.x, z: G.me.z, yaw: G.me.yaw });
   }
 
-  // camera
+  // third-person camera: high and behind (south of) you, looking down at the diner
   G.shake = Math.max(0, G.shake - dt);
-  const sh = G.shake * 0.08;
-  G.walkPhase = (G.walkPhase || 0) + (G.movedRecently > 0 ? dt * 9 : 0);
-  const bob = G.movedRecently > 0 ? Math.sin(G.walkPhase) * 0.028 : 0;
-  camera.position.set(G.me.x + (Math.random() - 0.5) * sh, 1.6 + bob + (Math.random() - 0.5) * sh, G.me.z);
-  const Pm = G.state?.players[G.role], wob = Pm?.slipUntil && G.state.t < Pm.slipUntil ? Math.sin(G.state.t * 22) * 0.12 * (Pm.slipUntil - G.state.t) : 0;
-  camera.rotation.set(controls.pitch - Math.abs(wob) * 0.6, G.me.yaw, wob);
+  const sh = G.shake * 0.12;
+  const ct = G.camT ||= { x: G.me.x, z: G.me.z };
+  ct.x += (G.me.x - ct.x) * Math.min(1, dt * 5); ct.z += (G.me.z - ct.z) * Math.min(1, dt * 5);
+  camera.position.set(ct.x + (Math.random() - 0.5) * sh, CAM.h + (Math.random() - 0.5) * sh, ct.z + CAM.back);
+  camera.lookAt(ct.x, 0.4, ct.z - 0.5);
+  const Pm = G.state?.players[G.role]; if (Pm?.slipUntil && G.state.t < Pm.slipUntil) camera.rotation.z += Math.sin(G.state.t * 22) * 0.04;
   if (window.__camOverride) { const o = window.__camOverride; camera.position.set(...o.pos); camera.rotation.set(...o.rot); }
+  world.mePose = { x: G.me.x, z: G.me.z, yaw: G.me.yaw };
 
   world.update(s, G.role, dt, time);
 
-  // hover + sticky target
-  const hovObj = pickHovered();
-  const hovKey = hovObj?.userData.ia || null;
-  G.hovered = hovKey && canTouch(G.role, hovKey) ? hovKey : null;
-  if (G.hovered && G.hovered !== G.target?.key) { G.target = { key: G.hovered }; audio.play('hover'); }
+  // what you're standing at
+  const near = pickNearest();
+  const nearKey = near?.userData.ia || null;
+  if (nearKey !== (G.target?.key ?? null)) { G.target = nearKey ? { key: nearKey } : null; if (nearKey) audio.play('hover'); }
   let menu = null, far = false, tObj = null;
-  if (G.target) {
-    tObj = world.iaObjs.get(G.target.key);
-    menu = tObj ? getMenu(s, G.role, G.target.key) : null;
-    if (!menu) G.target = null;
-    else {
-      tObj.getWorldPosition(tmpV);
-      const d = Math.hypot(tmpV.x - G.me.x, tmpV.z - G.me.z);
-      far = d > RANGE;
-      if (d > RANGE + 3 && G.hovered !== G.target.key) { G.target = null; menu = null; tObj = null; far = false; }
-    }
-  }
+  if (G.target) { tObj = world.iaObjs.get(G.target.key); menu = tObj ? getMenu(s, G.role, G.target.key) : null; if (!menu) { G.target = null; tObj = null; } }
   G.far = far;
   setHighlight(tObj && !far ? tObj : null);
 
@@ -418,21 +415,9 @@ function step(dt) {
   const myRec = G.role === 'cook' ? myP.receipt : myP.held?.type === 'tray' ? myP.held.receiptId : null;
   ui.frame(s, G.role, { menu, far, solo: G.solo && G.mode !== 'guest', myRecView: myRec });
 
-  // first-person held items
-  const hs = heldSig(myP.held) + (myP.held?.type === 'tray' && myP.held.receiptId ? Math.round((receiptById(s, myP.held.receiptId)?.grime || 0) * 8) : '');
-  if (hs !== G.heldSig) {
-    G.heldSig = hs;
-    heldGroup.clear();
-    if (myP.held) { const m = heldModel(myP.held, receiptById(s, myP.held.receiptId)?.grime || 0); if (myP.held.type === 'tray') m.scale.setScalar(0.8); heldGroup.add(m); }
-  }
-  const rr = G.role === 'cook' && myP.receipt ? receiptById(s, myP.receipt) : null;
-  const rs = rr ? `${rr.id}|${Math.round(rr.grime * 8)}` : '';
-  if (rs !== G.rcptSig) { G.rcptSig = rs; rcptGroup.clear(); if (rr) { const m = receiptHeldModel(rr.grime); m.scale.setScalar(1.6); rcptGroup.add(m); } }
-  heldGroup.position.y = -0.34 + (myP.busy ? Math.sin(time * 18) * 0.02 : 0);
   const moving = Math.hypot(G.me.x - (G.lastMe?.x ?? G.me.x), G.me.z - (G.lastMe?.z ?? G.me.z)) > 0.001;
   G.lastMe = { x: G.me.x, z: G.me.z };
   G.movedRecently = moving ? 0.25 : Math.max(0, (G.movedRecently || 0) - dt);
-  heldGroup.rotation.z = myP.held?.type === 'mop' && (moving || myP.busy) ? Math.sin(time * 11) * 0.35 : heldGroup.rotation.z * 0.85;
 
   // sounds
   for (const snd of s.sounds) {

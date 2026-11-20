@@ -17,18 +17,18 @@ export function paint(color, rough = 0.55, extra = {}) {
   return cache.get(k);
 }
 export const M = {
-  chrome: shared(new THREE.MeshStandardMaterial({ color: 0xE8EDF0, metalness: 1, roughness: 0.16 })),
-  steel: shared(new THREE.MeshStandardMaterial({ color: 0xD2D8DC, metalness: 0.6, roughness: 0.42 })),
-  panel: shared(new THREE.MeshStandardMaterial({ color: 0xC2C9CE, metalness: 0.45, roughness: 0.5 })),
-  darkSteel: shared(new THREE.MeshStandardMaterial({ color: 0x6E7378, metalness: 0.6, roughness: 0.45 })),
-  griddleTop: shared(new THREE.MeshStandardMaterial({ color: 0x2C2C2E, metalness: 0.7, roughness: 0.35 })),
-  black: shared(new THREE.MeshStandardMaterial({ color: 0x1C1C1E, roughness: 0.5 })),
+  chrome: shared(new THREE.MeshStandardMaterial({ color: 0xE3EBF2, metalness: 0.25, roughness: 0.32 })),
+  steel: shared(new THREE.MeshStandardMaterial({ color: 0xD9E3EC, metalness: 0.08, roughness: 0.5 })),
+  panel: shared(new THREE.MeshStandardMaterial({ color: 0x9FDCCF, metalness: 0.0, roughness: 0.65 })),
+  darkSteel: shared(new THREE.MeshStandardMaterial({ color: 0x8794A3, metalness: 0.08, roughness: 0.55 })),
+  griddleTop: shared(new THREE.MeshStandardMaterial({ color: 0x4B4F5C, metalness: 0.15, roughness: 0.45 })),
+  black: shared(new THREE.MeshStandardMaterial({ color: 0x3B3540, roughness: 0.6 })),
   rubber: shared(new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 })),
-  ceramic: shared(new THREE.MeshStandardMaterial({ color: 0xE6E1D6, roughness: 0.32 })),
+  ceramic: shared(new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.45 })),
   glass: shared(new THREE.MeshPhysicalMaterial({ color: 0xDDEEF2, roughness: 0.05, transmission: 0.0, transparent: true, opacity: 0.32, metalness: 0 })),
   frost: shared(new THREE.MeshStandardMaterial({ color: 0xE8F4F8, roughness: 0.3, transparent: true, opacity: 0.55 })),
-  wood: shared(new THREE.MeshStandardMaterial({ color: 0xB9844E, roughness: 0.6 })),
-  butcher: shared(new THREE.MeshStandardMaterial({ color: 0xB57D45, roughness: 0.62 })),
+  wood: shared(new THREE.MeshStandardMaterial({ color: 0xE0A464, roughness: 0.7 })),
+  butcher: shared(new THREE.MeshStandardMaterial({ color: 0xF2C27E, roughness: 0.7 })),
   oil: shared(new THREE.MeshStandardMaterial({ color: 0xD9A030, roughness: 0.05, metalness: 0.1, emissive: 0x4A3000, emissiveIntensity: 0.35, transparent: true, opacity: 0.55 })),
   water: shared(new THREE.MeshStandardMaterial({ color: 0x8FC4D8, roughness: 0.05, transparent: true, opacity: 0.7 })),
   paper: shared(new THREE.MeshStandardMaterial({ color: 0xF7F3EA, roughness: 0.85 })),
@@ -106,7 +106,7 @@ function doneness(item) {
 }
 const prepDone = (item, verb) => { const r = recipe(item); const i = r.steps.findIndex((s) => s.verb === verb); return i >= 0 && item.step > i; };
 
-// detailed downloaded models for a few finished items (filled in by furnish.js once loaded)
+// optional replacement models for a few finished items (none at the moment)
 export const OVERRIDES = {};
 export function itemModel(item) {
   const g = new THREE.Group();
@@ -846,5 +846,24 @@ export function detectorModel(on) {
   const g = new THREE.Group();
   cyl(g, 0.075, 0.08, 0.035, paint(0xF2EEE6, 0.6), 0, -0.035, 0, 20);
   cyl(g, 0.012, 0.012, 0.006, emissive(on ? 0xFF2020 : 0x330808, on ? 4 : 0.2), 0.035, -0.04, 0, 8);
+  return g;
+}
+
+// a chunky diner booth: two padded benches facing each other across a table (benches along z)
+export function dinerBooth(vinyl = 0xF0564E) {
+  const g = new THREE.Group();
+  const pad = paint(vinyl, 0.55), trim = paint(0xFFF3D6, 0.7), base = paint(0x3B3540, 0.7);
+  for (const s of [-1, 1]) {
+    const b = new THREE.Group(); b.position.z = s * 0.82; b.rotation.y = s > 0 ? 0 : Math.PI; g.add(b);
+    rbox(b, 1.5, 0.36, 0.5, base, 0, 0, 0.02, 0.06);              // plinth
+    rbox(b, 1.5, 0.16, 0.56, pad, 0, 0.34, 0, 0.08);               // seat cushion
+    rbox(b, 1.5, 0.72, 0.22, pad, 0, 0.42, 0.24, 0.1);             // tall padded back
+    for (let i = 0; i < 3; i++) rbox(b, 0.035, 0.6, 0.02, trim, -0.5 + i * 0.5, 0.5, 0.125, 0.01);   // tufting stripes
+    rbox(b, 1.56, 0.08, 0.28, trim, 0, 1.12, 0.24, 0.04);          // rolled top edge
+  }
+  rbox(g, 1.3, 0.07, 0.86, paint(0xFFF3D6, 0.6), 0, 0.72, 0, 0.035);
+  rbox(g, 1.34, 0.04, 0.9, paint(0x4FCFC2, 0.6), 0, 0.69, 0, 0.02);
+  cyl(g, 0.07, 0.09, 0.7, M.chrome, 0, 0, 0, 14);
+  lathe(g, [[0, 0], [0.3, 0], [0.28, 0.03], [0.08, 0.05], [0, 0.05]], M.chrome);
   return g;
 }

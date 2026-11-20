@@ -16,8 +16,8 @@ export const MUSIC = {
 };
 
 export const PALETTE = {
-  cherry: 0xC8262B, teal: 0x3FB8AF, cream: 0xF5EBD3, chrome: 0xC9D1D6,
-  black: 0x1B1B1B, white: 0xF7F5EE, mustard: 0xE7B23B, pink: 0xF4A6B8,
+  cherry: 0xF0564E, teal: 0x4FCFC2, cream: 0xFFF3D6, chrome: 0xD9E2EA,
+  black: 0x3B3540, white: 0xFFFDF6, mustard: 0xFFC83D, pink: 0xFF9EBB,
   orange: 0xFF6B2C, sick: 0x8FD16B, highlight: 0xFFF6C9,
 };
 
@@ -195,6 +195,7 @@ export const TUNING = {
 // --------------------------------------------------------------------------
 // Layout (1 unit = 1 m). Kitchen is z < -2, dining room is z > -2.
 // --------------------------------------------------------------------------
+const TOPH = 0.94;
 export const L = {
   // building: x -8..8, z -7..9. Kitchen top-left, restrooms top-right, dining below.
   wallZ: -2,                                   // kitchen front wall (the pass is in it)
@@ -211,9 +212,9 @@ export const L = {
   serverSpawn: { x: -6.7, z: -1.0, yaw: Math.PI },
 
   // kitchen
-  tv: { x: -6.7, y: 2.05, z: -2.08 },
+  tv: { x: -7.45, y: TOPH, z: -2.2 },
   printer: { x: -6.7, z: -2.4 },
-  rail: { x0: -6.05, x1: -5.45, y: 1.6, z: -2.07 },
+  rail: { x0: -6.05, x1: -5.45, y: 1.12, z: -2.2 },
   griddle: { x: -4.65, z: -6.6, slotX: [-5.8, -5.05, -4.3, -3.55] },
   fryer: { x: -2.2, z: -6.6, slotX: [-2.55, -1.85] },
   toaster: { x: -0.75, z: -6.6, slotX: [-0.9, -0.6] },
@@ -249,7 +250,7 @@ export const L = {
   ice: { x: -6.37, z: -1.55 },
   lids: { x: -6.03, z: -1.55 },
   soda: { x: -5.6, z: -1.55 },
-  menuBoard: { x: -3.0, y: 2.35, z: -1.87 },
+  menuBoard: { x: -6.55, y: 1.85, z: -1.75 },
   fTrash: { x: -0.4, z: -1.6 },
   mopDining: { x: 3.8, z: -6.6 },          // janitor bucket at the end of the restroom corridor
   jukebox: { x: 2.1, z: -1.55 },

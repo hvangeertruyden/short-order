@@ -104,6 +104,7 @@ export class UI {
     $('#solo-tip').classList.toggle('hidden', !solo);
     $('#vignette').className = s.fire && role === 'cook' ? 'smoke' : !s.power ? 'dark' : '';
     $('#batter').classList.toggle('hidden', !(role === 'cook' && s.inc?.batterUntil > s.t));
+    { const k = $('#kds'); k.classList.toggle('hidden', role !== 'cook'); if (role === 'cook' && this.kdsCanvas && !k.firstChild) k.appendChild(this.kdsCanvas); }
 
     this.renderMenu(menu, far);
     this.renderReceipts(s, role, menu, myRecView);

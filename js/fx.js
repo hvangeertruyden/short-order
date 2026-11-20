@@ -1,19 +1,18 @@
 // ---------------------------------------------------------------------------
 // Post-processing (contact shadows, glow, colour grade) + quality scaling.
-// Quality 2 = everything, 1 = no ambient occlusion, 0 = plain render.
+// Quality 2 = glow + colour grade (sharper on Retina), 1 = colour grade, 0 = plain render.
 // It steps down by itself if frames get slow; V cycles it by hand.
 // ---------------------------------------------------------------------------
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 
 // warm grade + gentle vignette + a touch of saturation (applied after tone mapping)
 const GradeShader = {
-  uniforms: { tDiffuse: { value: null }, uVignette: { value: 0.32 }, uSat: { value: 1.12 }, uWarm: { value: 0.035 }, uTime: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, uVignette: { value: 0.12 }, uSat: { value: 1.18 }, uWarm: { value: 0.02 }, uTime: { value: 0 } },
   vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
   fragmentShader: `
     uniform sampler2D tDiffuse; uniform float uVignette, uSat, uWarm, uTime; varying vec2 vUv;
@@ -37,18 +36,7 @@ export function createPost(renderer, scene, camera) {
   composer.setPixelRatio(renderer.getPixelRatio());
   composer.setSize(size.x, size.y);
   composer.addPass(new RenderPass(scene, camera));
-  const ao = new GTAOPass(scene, camera, size.x, size.y);
-  ao.output = GTAOPass.OUTPUT.Default;
-  ao.blendIntensity = 0.85;
-  ao.updateGtaoMaterial({ radius: 0.45, distanceExponent: 1.4, thickness: 1.2, scale: 1.0, samples: 8 });
-  ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 8 });
-  // the AO pass draws everything as solid depth: keep soft see-through things (steam, glows) out of it
-  const baseHide = ao.overrideVisibility.bind(ao);
-  ao.overrideVisibility = function () {
-    baseHide();
-    this.scene.traverse((o) => { if (o.visible && (o.isSprite || (o.material && !Array.isArray(o.material) && o.material.transparent && !o.material.depthWrite))) o.visible = false; });
-  };
-  composer.addPass(ao);
+  const ao = { enabled: false, setSize() {} };   // (no ambient occlusion in the bright cartoon look)
   const bloom = new UnrealBloomPass(new THREE.Vector2(size.x, size.y), 0.5, 0.5, 2.5);   // only real light sources (neon, lamps) glow
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
@@ -64,7 +52,6 @@ export function createPost(renderer, scene, camera) {
     passes: { ao, bloom, grade },
     setQuality(q) {
       quality = Math.max(0, Math.min(2, q));
-      ao.enabled = quality >= 2;
       // render resolution: Retina screens get a little extra sharpness on high, plain 1x otherwise
       const pr = quality >= 2 ? Math.min(1.25, window.devicePixelRatio) : 1;
       if (renderer.getPixelRatio() !== pr) { renderer.setPixelRatio(pr); const sz = renderer.getSize(new THREE.Vector2()); api.setSize(sz.x, sz.y); }
@@ -75,6 +62,7 @@ export function createPost(renderer, scene, camera) {
     setSize(w, h) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); ao.setSize(w, h); bloom.setSize(w, h); },
     render(dtMs) {
       grade.uniforms.uTime.value = (performance.now() % 10000) / 1000;
+      bloom.enabled = quality >= 2;
       if (quality === 0) renderer.render(scene, camera);
       else composer.render();
       // automatic step-down if the frame rate drops (only while the tab is visible)

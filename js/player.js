@@ -1,4 +1,4 @@
-// First-person controls: WASD, drag-to-look, Q/E turning, free cursor.
+// Third-person controls: WASD/arrows move across the screen; you face where you walk.
 import { COLLIDERS } from './world.js';
 
 const RADIUS = 0.28;
@@ -49,25 +49,25 @@ export class Controls {
     this.mouse.inside = true;
   }
 
-  // me = {x, z, yaw}; mutated in place
+  // me = {x, z, yaw}; mutated in place. Third person: WASD moves along the screen
+  // (W = away from the camera = north), and you turn to face where you're going.
   update(dt, me, frozen) {
-    me.yaw += this.yawDelta || 0; this.yawDelta = 0;
-    const turn = (this.keys.has('KeyQ') || this.keys.has('ArrowLeft') ? 1 : 0) - (this.keys.has('KeyE') || this.keys.has('ArrowRight') ? 1 : 0);
-    me.yaw += turn * 2.4 * dt;
+    this.yawDelta = 0;
     if (frozen) return;
-    let f = 0, s = 0;
-    if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) f += 1;
-    if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) f -= 1;
-    if (this.keys.has('KeyD')) s += 1;
-    if (this.keys.has('KeyA')) s -= 1;
-    if (!f && !s) return;
-    const len = Math.hypot(f, s);
-    f /= len; s /= len;
-    const sin = Math.sin(me.yaw), cos = Math.cos(me.yaw);
-    const vx = (-sin * f + cos * s) * SPEED * dt;
-    const vz = (-cos * f - sin * s) * SPEED * dt;
-    me.x += vx; resolve(me);
-    me.z += vz; resolve(me);
+    let x = 0, z = 0;
+    if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) z -= 1;
+    if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) z += 1;
+    if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) x += 1;
+    if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) x -= 1;
+    if (!x && !z) return;
+    const len = Math.hypot(x, z);
+    x /= len; z /= len;
+    me.x += x * SPEED * dt; resolve(me);
+    me.z += z * SPEED * dt; resolve(me);
+    // face the direction of travel (smoothly, the short way round)
+    const want = Math.atan2(-x, -z);
+    let d = want - me.yaw; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+    me.yaw += d * Math.min(1, dt * 14);
   }
 }
 

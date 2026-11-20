@@ -175,22 +175,19 @@ export function buildDecor(world) {
   // neon signs
   { const g = grp(S, 7.93, 2.15, 1.3); g.rotation.y = -Math.PI / 2; out.neon.push(neonSign(g, 'EAT', '#FF4A5A', 1.4, 0.6)); }
   { const g = grp(S, -7.93, 2.35, -0.6); g.rotation.y = Math.PI / 2; out.neon.push(neonSign(g, 'COFFEE', '#40E0D0', 1.6, 0.42)); }
-  { const g = grp(S, 4.9, 2.35, -1.87); out.neon.push(neonSign(g, 'Since 1955', '#FFC94D', 1.5, 0.42, 'Fredoka')); }
   // framed ads
   { const g = grp(S, 7.93, 1.75, 5.9); g.rotation.y = -Math.PI / 2; framedAd(g, 'fizzy'); }
-  { const g = grp(S, 0.6, 1.75, -1.87); framedAd(g, 'burger'); }
+  { const g = grp(S, -7.93, 1.75, 2.6); g.rotation.y = Math.PI / 2; framedAd(g, 'burger'); }
   { const g = grp(S, 7.93, 1.75, -0.4); g.rotation.y = -Math.PI / 2; framedAd(g, 'malt'); }
   // wall clock (hands follow the diner clock)
   {
-    const g = grp(S, 2.4, 2.25, -1.86);
+    const g = grp(S, 7.93, 2.3, 4.6); g.rotation.y = -Math.PI / 2;
     const face = canvasTex(256, 256, (c, w) => { c.fillStyle = '#F5EBD3'; c.beginPath(); c.arc(w / 2, w / 2, w / 2 - 4, 0, 7); c.fill(); c.fillStyle = '#C8262B'; c.font = 'bold 30px Bungee'; c.textAlign = 'center'; c.textBaseline = 'middle'; for (let i = 1; i <= 12; i++) { const a = i / 12 * 6.283 - 1.571; c.fillText(String(i), w / 2 + Math.cos(a) * 98, w / 2 + Math.sin(a) * 98); } });
     const rim = torus(g, 0.27, 0.025, M.chrome, 0, 0, 0.02); void rim;
     const fm = new THREE.Mesh(new THREE.CircleGeometry(0.26, 40), new THREE.MeshStandardMaterial({ map: face.tex, roughness: 0.5 })); fm.position.z = 0.02; g.add(fm);
     const hand = (len, w) => { const p = grp(g, 0, 0, 0.03); rbox(p, w, len, 0.006, M.black, 0, 0, 0, 0.003).position.y = len / 2; return p; };
     out.clock = { hour: hand(0.14, 0.022), minute: hand(0.21, 0.014) };
   }
-  // ceiling fans
-  for (const [x, z] of [[-2.2, 3.3], [3.1, 3.3]]) { const f = fanModel(); f.position.set(x, L.ceiling, z); S.add(f); out.fans.push(f.userData.blades); }
   // pie case on the counter + sugar shakers on every table
   { const p = pieCase(); p.position.set(-6.7, 1.04, 0.9); S.add(p); }
   for (const t of TABLES) { const sh = sugarShaker(); sh.position.set(t.x - 0.16, 0.76, t.z + (t.seat.z > t.z ? -0.18 : 0.18)); S.add(sh); world.vis.tables[t.n].parts.push(sh); }
@@ -217,7 +214,7 @@ export class Life {
     const n = 220, pos = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { pos[i * 3] = -7 + Math.random() * 14; pos[i * 3 + 1] = 0.3 + Math.random() * 2.3; pos[i * 3 + 2] = 4.5 + Math.random() * 4.3; }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    this.dust = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xFFE8B8, size: 0.009, transparent: true, opacity: 0.22, depthWrite: false }));
+    this.dust = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xFFE8B8, size: 0.009, transparent: true, opacity: 0.22, depthWrite: false })); this.dust.visible = false;
     this.dust.userData.noHit = true; scene.add(this.dust);
   }
   emit(x, y, z, size = 0.25, color = 0xFFFFFF, alpha = 0.32) {

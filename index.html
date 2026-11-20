@@ -7,28 +7,28 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Fredoka:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=72f479cf6c">
+  <link rel="stylesheet" href="css/style.css?v=b318b63747">
   <script type="importmap">
     { "imports": {
         "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
         "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
-        "./js/actions.js": "./js/actions.js?v=72f479cf6c",
-        "./js/audio.js": "./js/audio.js?v=72f479cf6c",
-        "./js/data.js": "./js/data.js?v=72f479cf6c",
-        "./js/decor.js": "./js/decor.js?v=72f479cf6c",
-        "./js/furnish.js": "./js/furnish.js?v=72f479cf6c",
-        "./js/fx.js": "./js/fx.js?v=72f479cf6c",
-        "./js/incidents.js": "./js/incidents.js?v=72f479cf6c",
-        "./js/jelly.js": "./js/jelly.js?v=72f479cf6c",
-        "./js/kitchen.js": "./js/kitchen.js?v=72f479cf6c",
-        "./js/main.js": "./js/main.js?v=72f479cf6c",
-        "./js/models.js": "./js/models.js?v=72f479cf6c",
-        "./js/net.js": "./js/net.js?v=72f479cf6c",
-        "./js/party.js": "./js/party.js?v=72f479cf6c",
-        "./js/player.js": "./js/player.js?v=72f479cf6c",
-        "./js/sim.js": "./js/sim.js?v=72f479cf6c",
-        "./js/ui.js": "./js/ui.js?v=72f479cf6c",
-        "./js/world.js": "./js/world.js?v=72f479cf6c"
+        "./js/actions.js": "./js/actions.js?v=b318b63747",
+        "./js/audio.js": "./js/audio.js?v=b318b63747",
+        "./js/bean.js": "./js/bean.js?v=b318b63747",
+        "./js/data.js": "./js/data.js?v=b318b63747",
+        "./js/decor.js": "./js/decor.js?v=b318b63747",
+        "./js/fx.js": "./js/fx.js?v=b318b63747",
+        "./js/incidents.js": "./js/incidents.js?v=b318b63747",
+        "./js/jelly.js": "./js/jelly.js?v=b318b63747",
+        "./js/kitchen.js": "./js/kitchen.js?v=b318b63747",
+        "./js/main.js": "./js/main.js?v=b318b63747",
+        "./js/models.js": "./js/models.js?v=b318b63747",
+        "./js/net.js": "./js/net.js?v=b318b63747",
+        "./js/party.js": "./js/party.js?v=b318b63747",
+        "./js/player.js": "./js/player.js?v=b318b63747",
+        "./js/sim.js": "./js/sim.js?v=b318b63747",
+        "./js/ui.js": "./js/ui.js?v=b318b63747",
+        "./js/world.js": "./js/world.js?v=b318b63747"
     } }
   </script>
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
@@ -73,6 +73,7 @@
     <div id="help-tip"><span class="kbd">H</span> help</div>
     <button id="end-shift" class="btn ghost hidden">End practice</button>
     <div id="vignette"></div>
+    <div id="kds" class="hidden"></div>
     <div id="batter" class="hidden"><i></i><i></i><i></i><i></i><i></i><i></i></div>
   </div>
 
@@ -82,9 +83,9 @@
       <div class="cols">
         <div>
           <h3>Controls</h3>
-          <p><span class="kbd">W A S D</span> walk</p>
-          <p><span class="kbd">Drag</span> (hold mouse &amp; drag) to look around · or <span class="kbd">Q</span> <span class="kbd">E</span></p>
-          <p><span class="kbd">Hover</span> things to see what you can do · <span class="kbd">Click</span> or <span class="kbd">1</span>–<span class="kbd">6</span> to do it</p>
+          <p><span class="kbd">W A S D</span> or arrows: walk</p>
+          <p>Walk up to something and face it to see what you can do</p>
+          <p><span class="kbd">Space</span> do the first thing · <span class="kbd">1</span>–<span class="kbd">6</span> pick one (or click it)</p>
           <p><span class="kbd">G</span> drop whatever you're holding (pick it back up off the floor)</p>
           <p><span class="kbd">Enter</span> staff chat · <span class="kbd">T</span> type to a customer · <span class="kbd">Esc</span> close</p>
           <p><span class="kbd">M</span> mute everything · <span class="kbd">N</span> music on/off · <span class="kbd">V</span> graphics quality</p>
@@ -92,7 +93,7 @@
         <div>
           <h3>The loop</h3>
           <p><b>Server:</b> take the order at the counter → ring it up (they get a number tent) → make their drink (soda: cup → ice → fill → lid; coffee: mug → brew) → deliver the tray to the table on the receipt → take payment → clear the table → drop dishes at the pass.</p>
-          <p><b>Cook:</b> print tickets from the TV → grab the receipt → take ingredients from the fridge, freezer &amp; bread box → cook them step by step (flip! stir! lift!) → finish at the prep counter → plate on the pass with the receipt → ring the bell → wash dishes.</p>
+          <p><b>Cook:</b> print tickets (the order screen is in the corner) → grab the receipt → take ingredients from the fridge, freezer &amp; bread box → cook them step by step (flip! stir! lift!) → finish at the prep counter → plate on the pass with the receipt → ring the bell → wash dishes.</p>
           <p>Dirty plates make people sick. Noise means nobody can hear the server. <b>Talk to each other.</b></p>
         </div>
       </div>
@@ -167,6 +168,6 @@
     <div class="card"><h2>Connection lost</h2><p id="dc-msg"></p><button class="btn" id="btn-dc">Back to menu</button></div>
   </div>
 
-  <script type="module" src="js/main.js?v=72f479cf6c"></script>
+  <script type="module" src="js/main.js?v=b318b63747"></script>
 </body>
 </html>

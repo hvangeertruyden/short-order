@@ -40,7 +40,7 @@ Enter = staff chat · T = type to a customer · Esc = close · H = help · M = m
 - `js/sim.js`: game rules (host-authoritative simulation)
 - `js/actions.js`: what each object offers each role (the hover menu)
 - `js/world.js`: the 3D diner (layout, lights, live objects)
-- `js/furnish.js`: swaps in the downloaded models from `models/` · `js/decor.js`: signs, ads, fans, steam
+- `js/bean.js`: the bean people · `js/decor.js`: signs, ads, steam
 - `js/ui.js`, `css/style.css`: HUD, receipts, chats, summary
 - `js/net.js`: PeerJS networking · `js/audio.js`: synthesized sounds
 
@@ -48,23 +48,3 @@ Enter = staff chat · T = type to a customer · Esc = close · H = help · M = m
 Sound effects in `sounds/` are from the Pixabay / Freesound community: bell, deep fryer, bacon (griddle sizzle),
 toaster pop, blender, fridge open + close, mopping, washing dishes, soda pour (freesound_community), beep (musheran) and button click (universfield). Background music streams from
 archive.org (no license listed; replace before any real release).
-
-## 3D model credits
-Detailed furniture and props in `models/` come from Sketchfab and load in `js/furnish.js`
-(the hand-built pieces stay underneath as click targets and as a fallback). Thank you to:
-
-| Model | Author | License |
-|---|---|---|
-| [Retro Diner Booth](https://sketchfab.com/3d-models/retro-diner-booth-8ef32cec40304720a6ba18e186b49dbc) | deleted_cube | CC BY 4.0 |
-| [Retro Diner Table Set](https://sketchfab.com/3d-models/retro-diner-table-set-307918ddc85645da9805b105584ee77b) | deleted_cube | CC BY 4.0 |
-| [Commercial Kitchen Props](https://sketchfab.com/3d-models/commercial-kitchen-props-30cd4c6767f64e9db2cd9ee4b09eee32) (griddles, fryer, freezer) | Courvee (@AndreiTrunov) | **CC BY-NC 4.0** (non-commercial only) |
-| [Retro Fridge](https://sketchfab.com/3d-models/retro-fridge-3b130f0ba4304966a101c82be2429cc7) (maker's badge removed) | dylanheyes | CC BY 4.0 |
-| [Silverware (Spoon, Fork, Knife)](https://sketchfab.com/3d-models/silverware-spoon-fork-knife-76a43250dd694d2fa1e109124d75b6ad) | Fridge (@youssefdarwish01) | CC BY 4.0 |
-| [Fast Food Soda Cup](https://sketchfab.com/3d-models/fast-food-soda-cup-363537b2f81f43259aa587c8c5663c8e) | Adam.White | CC BY 4.0 |
-| [Coffee pot](https://sketchfab.com/3d-models/coffee-pot-78cf3e058a0c4ff6a66652ee7657b3a9) | Virtual Museums of Małopolska | CC BY 4.0 |
-| [Textured Napkin Dispenser](https://sketchfab.com/3d-models/textured-napkin-dispenser-83179d6069144ef2bf74c774dffa77c8) | Rachel Waag | CC BY 4.0 |
-| [Condiments](https://sketchfab.com/3d-models/condiments-eb37199b60434b5395da7338e68e15f3) | WillowBoxArt | CC BY 4.0 |
-| [Pancake - Food/SWC4](https://sketchfab.com/3d-models/pancake-foodswc4-8316d507d6334b14b7232e9b806a950e) | felixyadomi | CC BY 4.0 |
-
-Models were rescaled, recoloured (tabletops) or trimmed (stray props) to fit the game.
-The kitchen props pack is non-commercial: replace it before Short Order is ever sold.
