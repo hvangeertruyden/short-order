@@ -302,7 +302,12 @@ window.addEventListener('pointerdown', () => audio.unlockAudio());
 // menu-button click for buttons that don't already make a sound through act()
 document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && !b.disabled && !b.closest('#menu, #npc, .pt-card')) audio.play('menu'); });
 
-controls.onClick = null;   // third person: you act on whatever you're standing at (Space or 1-6)
+// clicking the hovered object does the same as pressing E
+controls.onClick = () => {
+  if (!G.target) return;
+  const a = G.far ? null : ui.currentActions.find((x) => !x.disabled && x.a);
+  if (a) act(a.a); else audio.play('deny');
+};
 
 // ---- hover / highlight ---------------------------------------------------------
 const tmpV = new THREE.Vector3();
