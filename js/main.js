@@ -317,7 +317,8 @@ function pickHovered() {
     let o = h.object, iaObj = null, noHit = false, hidden = false;
     while (o) { if (!o.visible) hidden = true; if (o.userData.noHit) noHit = true; if (!iaObj && o.userData.ia) iaObj = o; o = o.parent; }
     if (hidden || noHit) continue;
-    if (!iaObj && h.object.material?.transparent && h.object.material.opacity < 0.6) continue;
+    if (h.object.material?.transparent && h.object.material.opacity < 0.6) continue;   // faded (see-through) things
+    if (iaObj && !canTouch(G.role, iaObj.userData.ia)) continue;                      // the other side's stuff doesn't block you
     if (!iaObj) return null;                                   // something solid is in the way
     if (iaObj.userData.ia.startsWith('avatar')) continue;
     return iaObj;
