@@ -63,9 +63,9 @@ export class World {
   buildLights() {
     this.indoor = [];                       // (kept for the power-cut code; everything is daylight now)
     // a bright, soft sky plus one warm sun: the cheerful, toy-like look
-    this.hemi = new THREE.HemisphereLight(0xFFF4E2, 0xC9B38E, 1.15);
+    this.hemi = new THREE.HemisphereLight(0xFFF1DE, 0xB89F7A, 0.8);
     this.scene.add(this.hemi);
-    this.sun = new THREE.DirectionalLight(0xFFEDD2, 3.0);
+    this.sun = new THREE.DirectionalLight(0xFFE9CC, 2.2);
     this.sun.position.set(7, 18, 11);
     this.sun.target.position.set(0, 0, 1);
     this.sun.castShadow = true;
@@ -83,7 +83,7 @@ export class World {
     // ---- floors ----
     const floor = (x0, z0, x1, z1, mat) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), mat); m.rotation.x = -Math.PI / 2; m.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2); m.receiveShadow = true; S.add(m); };
     const tex = (draw, rx, ry) => { const t = canvasTex(256, 256, draw); t.tex.wrapS = t.tex.wrapT = THREE.RepeatWrapping; t.tex.repeat.set(rx, ry); return t.tex; };
-    const checker = (ctx) => { for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) { ctx.fillStyle = (x + y) % 2 ? '#86D6C8' : '#FFF5DD'; ctx.fillRect(x * 128, y * 128, 128, 128); } ctx.strokeStyle = 'rgba(120,150,140,0.25)'; ctx.lineWidth = 3; ctx.strokeRect(0, 0, 256, 256); };
+    const checker = (ctx) => { for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) { ctx.fillStyle = (x + y) % 2 ? '#74C7B9' : '#F3E6C8'; ctx.fillRect(x * 128, y * 128, 128, 128); } ctx.strokeStyle = 'rgba(120,150,140,0.25)'; ctx.lineWidth = 3; ctx.strokeRect(0, 0, 256, 256); };
     floor(-8, -2, 8, 9, new THREE.MeshStandardMaterial({ map: tex(checker, 16, 11), roughness: 0.35 }));
     const quarry = (ctx) => { ctx.fillStyle = '#E6C99A'; ctx.fillRect(0, 0, 256, 256); for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) { const v = 0.9 + ((x * 7 + y * 13) % 5) * 0.05; ctx.fillStyle = (x + y) % 2 ? '#FFE7B8' : '#F4CD8C'; ctx.fillRect(x * 64 + 3, y * 64 + 3, 58, 58); } };
     floor(-8, -7, 3, -2, new THREE.MeshStandardMaterial({ map: tex(quarry, 5.5, 2.5), roughness: 0.6 }));
@@ -889,7 +889,7 @@ export class World {
 
   updateEnvironment(s, time) {
     const dim = !s.power;
-    this.hemi.intensity = dim ? 0.45 : 1.15; this.sun.intensity = dim ? 0.9 : 3.0;
+    this.hemi.intensity = dim ? 0.35 : 0.8; this.sun.intensity = dim ? 0.7 : 2.2;
     // indoor lights die with the power (the daylight doesn't); the kitchen fluorescent stutters now and then
     const stutter = Math.sin(time * 0.7) > 0.985 ? (Math.random() < 0.5 ? 0.15 : 1) : 1;
     for (const [l, base] of this.indoor) l.intensity = dim ? 0 : base * (l === this.kLight ? stutter : 1);

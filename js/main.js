@@ -29,7 +29,7 @@ renderer.setPixelRatio(1);   // fx.js picks the real ratio per graphics quality
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 0.92;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.shadowMap.autoUpdate = false;   // re-rendered a few times a second (see loop), not every frame
@@ -292,7 +292,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyV') { const q = post.cycle(); try { localStorage.setItem('shortorder.quality', String(q)); } catch {} ui.localToast(['🖥️ Graphics: low', '🖥️ Graphics: medium', '🖥️ Graphics: high'][q]); return; }
   if (e.code === 'KeyN') { audio.setMusicEnabled(!audio.musicEnabled()); ui.localToast(audio.musicEnabled() ? '🎵 Diner radio on' : '🎵 Diner radio off'); return; }
   if (e.code === 'KeyM') { G.muted = !G.muted; audio.setVolume(G.muted ? 0 : 0.35); ui.localToast(G.muted ? '🔇 Muted' : '🔊 Sound on'); return; }
-  if (e.code === 'Space') { e.preventDefault(); const a = ui.currentActions.find((x) => !x.disabled && x.a); if (a) act(a.a); else audio.play('deny'); return; }
+  if (e.code === 'Space' || e.code === 'KeyE') { e.preventDefault(); const a = ui.currentActions.find((x) => !x.disabled && x.a); if (a) act(a.a); else audio.play('deny'); return; }
   const m = /^Digit([1-9])$/.exec(e.code);
   if (m) { const a = ui.currentActions[Number(m[1]) - 1]; if (a && !a.disabled && a.a) act(a.a); else audio.play('deny'); }
 });
@@ -334,7 +334,7 @@ function setHighlight(obj) {
   if (G.hl === obj) return;
   if (G.hl) G.hl.traverse((m) => { if (m.userData.hlOrig) { m.material.emissive.setHex(m.userData.hlOrig[0]); m.material.emissiveIntensity = m.userData.hlOrig[1]; delete m.userData.hlOrig; } });
   G.hl = obj;
-  if (obj) obj.traverse((m) => { if (m.material?.emissive && !m.userData.hlOrig) { m.userData.hlOrig = [m.material.emissive.getHex(), m.material.emissiveIntensity]; m.material.emissive.setHex(0x8A7A3A); m.material.emissiveIntensity = 0.7; } });
+  if (obj) obj.traverse((m) => { if (m.material?.emissive && !m.userData.hlOrig) { m.userData.hlOrig = [m.material.emissive.getHex(), m.material.emissiveIntensity]; m.material.emissive.setHex(0x1A3C8C); m.material.emissiveIntensity = 0.55; } });
 }
 
 // ---- main loop ---------------------------------------------------------------
@@ -413,7 +413,9 @@ function step(dt) {
   // receipt you are holding (cook) or carrying on a tray (server)
   const myP = s.players[G.role];
   const myRec = G.role === 'cook' ? myP.receipt : myP.held?.type === 'tray' ? myP.held.receiptId : null;
-  ui.frame(s, G.role, { menu, far, solo: G.solo && G.mode !== 'guest', myRecView: myRec });
+  let anchor = null;
+  if (tObj && menu) { tObj.getWorldPosition(tmpV); tmpV.y += 0.9; tmpV.project(camera); if (tmpV.z < 1) anchor = { x: (tmpV.x * 0.5 + 0.5) * window.innerWidth, y: (-tmpV.y * 0.5 + 0.5) * window.innerHeight }; }
+  ui.frame(s, G.role, { menu, far, solo: G.solo && G.mode !== 'guest', myRecView: myRec, anchor });
 
   const moving = Math.hypot(G.me.x - (G.lastMe?.x ?? G.me.x), G.me.z - (G.lastMe?.z ?? G.me.z)) > 0.001;
   G.lastMe = { x: G.me.x, z: G.me.z };

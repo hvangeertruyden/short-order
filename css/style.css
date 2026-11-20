@@ -209,3 +209,19 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #1B1B1B; col
 /* the kitchen order screen, mirrored into the cook's HUD (the 3D one faces the kitchen wall) */
 #kds { position: fixed; left: 16px; bottom: 16px; width: min(380px, 34vw); border-radius: 14px; overflow: hidden; border: 4px solid #3B3540; box-shadow: 0 6px 0 rgba(0,0,0,.25); z-index: 4; background: #111; }
 #kds canvas { display: block; width: 100%; height: auto; }
+
+/* proximity prompt: floats beside whatever you're standing at */
+#menu { left: 0; top: 0; bottom: auto; transform: none; min-width: 0; max-width: 300px; text-align: left; padding: 10px 12px 10px;
+  background: rgba(30, 46, 86, 0.92); border: 3px solid #121C36; border-radius: 18px; box-shadow: 0 6px 0 rgba(10, 16, 32, .45); color: #fff;
+  transition: transform .08s linear; pointer-events: auto; }
+#menu .m-title { font: 700 13px Fredoka, sans-serif; color: #A9C4F5; letter-spacing: .02em; margin: 0 0 2px 4px; text-transform: none; }
+#menu .m-info { font: 500 12px Fredoka, sans-serif; color: #D5E1F7; margin: 0 0 6px 4px; }
+#menu .m-info div { display: inline; }
+#menu .m-info div + div::before { content: ' · '; }
+#menu .m-actions { display: flex; flex-direction: column; gap: 6px; }
+#menu .m-actions button { display: flex; align-items: center; gap: 10px; background: transparent; border: 0; box-shadow: none; color: #fff; padding: 2px 4px; font: 600 15px Fredoka, sans-serif; text-align: left; border-radius: 12px; cursor: pointer; }
+#menu .m-actions button:hover:not(:disabled) { background: rgba(255,255,255,.08); }
+#menu .m-actions button.primary { font-size: 19px; font-weight: 700; }
+#menu .m-actions button:disabled { opacity: .4; cursor: default; }
+#menu .key { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #FFF3D6; color: #1E2E56; font: 800 16px Bungee, sans-serif; border: 3px solid #121C36; box-shadow: 0 3px 0 #121C36; }
+#menu .primary .key { width: 44px; height: 44px; font-size: 20px; background: #FFC83D; }

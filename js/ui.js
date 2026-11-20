@@ -69,7 +69,8 @@ export class UI {
   }
 
   // ------------------------------------------------------------------
-  frame(s, role, { menu, far, solo, myRecView }) {
+  frame(s, role, opts) {
+    const { menu, far, solo, myRecView } = opts;
     // top-left
     const rb = $('#role-badge');
     rb.className = role; rb.textContent = role === 'cook' ? '🍳 COOK' : '🧾 SERVER';
@@ -107,6 +108,7 @@ export class UI {
     { const k = $('#kds'); k.classList.toggle('hidden', role !== 'cook'); if (role === 'cook' && this.kdsCanvas && !k.firstChild) k.appendChild(this.kdsCanvas); }
 
     this.renderMenu(menu, far);
+    this.placeMenu(opts.anchor);
     this.renderReceipts(s, role, menu, myRecView);
     this.renderToasts(s, role);
     this.renderChat(s, role);
@@ -129,10 +131,22 @@ export class UI {
     menu.actions.forEach((a, i) => {
       const b = document.createElement('button');
       b.disabled = a.disabled || far || !a.a;
-      b.innerHTML = `<span class="n">${i + 1}</span>${esc(a.label)}`;
+      const first = i === menu.actions.findIndex((x) => !x.disabled && x.a);
+      b.className = first ? 'primary' : '';
+      b.innerHTML = `<span class="key">${first ? 'E' : i + 1}</span><span class="lbl">${esc(a.label)}</span>`;
       b.addEventListener('click', (e) => { e.stopPropagation(); if (!b.disabled) this.onAction(a.a); });
       box.appendChild(b);
     });
+  }
+
+  // float the prompt beside whatever you're standing at (like a game's "press E" prompt)
+  placeMenu(anchor) {
+    const el = $('#menu');
+    if (!anchor || el.classList.contains('hidden')) return;
+    const w = el.offsetWidth, h = el.offsetHeight;
+    const x = Math.max(12, Math.min(window.innerWidth - w - 12, anchor.x + 34));
+    const y = Math.max(70, Math.min(window.innerHeight - h - 12, anchor.y - h / 2));
+    el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
   }
 
   receiptHTML(s, rid) {
