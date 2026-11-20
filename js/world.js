@@ -781,20 +781,30 @@ export class World {
       b.getCenter(c);
       const z = this.zoneAt(c.x, c.z); if (z !== 'both') this.zoneList.push([o, z]);
     }
+    // anything standing right against the dining side of the kitchen wall (menu board, drink machines)
+    // sits between the cook's camera and the kitchen counter, so it fades with the wall
+    for (const o of this.static.children) {
+      if (this.dividerWall.includes(o)) continue;
+      b.setFromObject(o); if (b.isEmpty()) continue; b.getCenter(c);
+      if (c.x < 3 && c.z > L.wallZ && c.z < L.wallZ + 0.75 && b.max.y > 1.1) this.dividerWall.push(o);
+    }
     this.zoneRole = null;
   }
   applyZones(role) {
     const mine = role === 'cook' ? 'kitchen' : 'dining';
     if (this.zoneRole !== role) {
       this.zoneRole = role;
+      // undo the cook's see-through wall first, then (re)dim the other side, then fade again for the cook
+      for (const top of this.dividerWall) top.traverse((m) => { if (m.isMesh && m.userData.solidMat) { m.material = m.userData.solidMat; delete m.userData.solidMat; m.castShadow = true; } });
       for (const [o, z] of this.zoneList) setDim(o, z !== mine);
       // the wall between the two sides: solid from the dining room, see-through from the kitchen
       // (the cook's camera looks over it from the dining-room side)
-      for (const m of this.dividerWall) {
-        if (!m.isMesh) continue;
-        if (role === 'cook') { if (!m.userData.solidMat) { m.userData.solidMat = m.material; const g = m.material.clone(); g.transparent = true; g.opacity = 0.22; g.depthWrite = false; m.material = g; m.castShadow = false; } }
-        else if (m.userData.solidMat) { m.material = m.userData.solidMat; delete m.userData.solidMat; m.castShadow = true; }
-      }
+      if (role === 'cook') for (const top of this.dividerWall) top.traverse((m) => {
+        if (!m.isMesh || m.userData.solidMat || m.material?.visible === false) return;
+        m.userData.solidMat = m.material;
+        const fade = (x) => { const g = x.clone(); g.transparent = true; g.opacity = 0.2; g.depthWrite = false; return g; };
+        m.material = Array.isArray(m.material) ? m.material.map(fade) : fade(m.material); m.castShadow = false;
+      });
     }
     // people, food, puddles... dim whatever is on the other side right now
     for (const o of this.dynRoot.children) {
